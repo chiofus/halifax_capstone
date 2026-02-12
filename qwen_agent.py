@@ -12,6 +12,48 @@ def initialize_dataset() -> Dataset:
     
     return d
 
+def initialize_agent_prompting(model, tokenizer) -> None:
+    """
+    This will be the main loop where the user can keep prompting the agent.
+    """
+
+
+    while True:
+        #Get user prompt
+        user_prompt: str = input(">> ")
+
+        #Generate agent response
+        prompt = [
+            {"role": "system", "content": "You are a helpful assistant, that responds as a pirate. The user has asked the following question."},
+            {"role": "user", "content": f"{user_prompt}"},
+        ]
+
+        # Apply Qwen chat template
+        inputs = tokenizer.apply_chat_template(
+            prompt,
+            tokenize=True,
+            add_generation_prompt=True,
+            return_tensors="pt",
+        )
+
+        input_ids = inputs["input_ids"].to("cuda")
+        attention_mask = inputs["attention_mask"].to("cuda")
+
+        print("Generating response...")
+        with torch.no_grad():
+            outputs = model.generate(
+                input_ids=input_ids,
+                attention_mask=attention_mask,
+                max_new_tokens=256,
+                temperature=0.1,
+                top_p=0.9,
+                repetition_penalty=1.1,
+                do_sample=False,
+            )
+
+        response = tokenizer.decode(outputs[0][input_ids.shape[1]:], skip_special_tokens=True)
+        print(response)
+
 def initialize_agent():
     model_id = "Qwen/Qwen2.5-7B-Instruct"
 
@@ -35,7 +77,7 @@ def initialize_agent():
 
     prompt = [
         {"role": "system", "content": "You are a helpful assistant, that responds as a pirate."},
-        {"role": "user", "content": "What's Deep Learning?"},
+        {"role": "user", "content": "Give me a quick introduction of who you are and what you can do for me. Finish by stating that you are ready to continue answering any questions I may have, all in pirate character, of course."},
     ]
 
     # Apply Qwen chat template
@@ -49,7 +91,7 @@ def initialize_agent():
     input_ids = inputs["input_ids"].to("cuda")
     attention_mask = inputs["attention_mask"].to("cuda")
 
-    print("Generating...")
+    print("Generating agent introduction...")
     with torch.no_grad():
         outputs = model.generate(
             input_ids=input_ids,
@@ -62,12 +104,12 @@ def initialize_agent():
         )
 
     response = tokenizer.decode(outputs[0][input_ids.shape[1]:], skip_special_tokens=True)
-
-    print("\nGenerated SPARQL:\n")
     print(response)
 
-    return
+    initialize_agent_prompting(model, tokenizer)
 
+    print("THE AGENT HAS NOW BEEN TERMINATED")
+    return
 
 d = initialize_dataset()
 
