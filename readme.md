@@ -11,3 +11,7 @@ IMPORTANT: If running into issues when installing the GPTQModel libraries, try:
 'pip install --no-build-isolation GPTQModel==5.7.0'
 
 -> this forces the installation to look for the torch installed in your local .venv instead of systemwide
+
+Setting up agent:
+
+Go to 'console.groq.com' to get setup with your groq API keys
