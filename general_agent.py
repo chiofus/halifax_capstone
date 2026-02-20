@@ -95,10 +95,10 @@ SELECT ?height WHERE {
 }
 """
 
-# results = d.query(query)
+results = d.query(query)
 
-# for row in results:
-#     print(row)
+for row in results:
+    print(row)
 
 initialize_agent()
 
