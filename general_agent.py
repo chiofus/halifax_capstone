@@ -85,20 +85,20 @@ def initialize_agent_prompting(
 
         print("\n" + response + "\n")
 
-d = initialize_dataset()
+# d = initialize_dataset()
 
-#Testing a query to get han solo's height
-query: str = """
-SELECT ?height WHERE {
-  ?character rdfs:label "Han Solo"@en .
-  ?character <https://swapi.co/vocabulary/height> ?height .
-}
-"""
+# #Testing a query to get han solo's height
+# query: str = """
+# SELECT ?height WHERE {
+#   ?character rdfs:label "Han Solo"@en .
+#   ?character <https://swapi.co/vocabulary/height> ?height .
+# }
+# """
 
-results = d.query(query)
+# results = d.query(query)
 
-for row in results:
-    print(row)
+# for row in results:
+#     print(row)
 
 initialize_agent()
 
