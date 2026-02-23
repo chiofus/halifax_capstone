@@ -6,6 +6,7 @@ from shapely.geometry import shape
 from shapely.wkt import dumps as wkt_dumps
 from email.utils import parsedate_to_datetime
 import polars as pl
+from tqdm import tqdm
 
 # Namespaces
 HP = Namespace("http://ontology.eil.utoronto.ca/HPCDM/")
@@ -47,12 +48,8 @@ def create_parcel_triples(input_geojson: str, input_csv:str, output_file: str, f
     print("Loading .csv data...")
     csv_data = pl.read_csv(input_csv) #loading csv data
 
-    progress: int = -1
-    for index, feature in enumerate(data["features"]): #Building parcel triples
-        progress += 1
-        if progress >= data_len*0.10:
-            print(f"{index/data_len*100:.2f}% done...")
-            progress=0
+    print("Creating triples...")
+    for index, feature in enumerate(tqdm(data["features"])): #Building parcel triples
         try:
             object_id = feature["properties"].get("OBJECTID") #uses object id to reference parcel ids
             property_uri = URIRef(COT[f"Property{object_id}"])
@@ -84,17 +81,9 @@ def create_parcel_triples(input_geojson: str, input_csv:str, output_file: str, f
             g.add((perimeter_measure_uri, I72.hasUnit, I72.metre))
             g.add((perimeter_measure_uri, I72.hasNumericalValue, fast_literal(obj_data[0, "Shape__Length"])))
 
-            # Properties Use this if you want to add any of the other props in the geojson
-            # for key, value in feature.get("properties", {}).items():
-            #     if value is None:
-            #         continue
-            #     predicate = URIRef(EXPROP[key.lower()])
-            #     g.add((property_uri, predicate, fast_literal(value)))
-
             # Geometry conversion and object
             geom = shape(feature["geometry"])
             wkt = wkt_dumps(geom, rounding_precision=12)
-
             g.add((
                 loc_uri,
                 GEO.asWKT,
@@ -116,9 +105,9 @@ def create_parcel_triples(input_geojson: str, input_csv:str, output_file: str, f
 
 
 if __name__ == "__main__":
-    create_parcel_triples("raw_data\\properties_buildings\\Buildings_6259731988453899976.geojson",
-                          "raw_data\\properties_buildings\\Buildings_329937383183005496.csv",
-                          "raw_data\\properties_buildings\\one_sample.ttl",
+    create_parcel_triples("raw_data/properties_buildings/Buildings_1310805957371431331.geojson",
+                          "raw_data/properties_buildings/Buildings_7079887413369540980.csv",
+                          "raw_data/properties_buildings/all_triples_properties.ttl",
                           format="turtle")
     # For bulk load speed:
     # convert_geojson("input.geojson", "output.nt", format="nt")
