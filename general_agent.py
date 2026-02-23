@@ -1,11 +1,12 @@
-from rdflib import Dataset
+from rdflib import Dataset, Graph
 from groq import Groq
 import os
+from SPARQLWrapper import SPARQLWrapper, JSON
 
-def initialize_dataset() -> Dataset:
-    d = Dataset()
+def initialize_dataset() -> Dataset | Graph:
+    d = Graph()
     try:
-        d.parse("starwars.trig", format="trig")
+        d.parse("raw_data\\properties_buildings\\properties_buildings.ttl", format="ttl")
     except Exception as e:
         print(f"Error parsing file: {e}")
         return
@@ -58,6 +59,36 @@ def initialize_agent(
     initialize_agent_prompting(client, model_name)
     return
 
+def evaluate_potential_cq(messages: list[dict], client: Groq, model_name: str):
+    #Decides if the user is asking a CQ question, so that a query can be ran for it.
+
+    #Appending decision question to given user prompt
+    messages = messages.append(
+        {"role": "system", "content": """
+         Please remember that you are an intelligent chatbot assistant ready to answer housing related questions for the city of Halifax, Canada.
+
+         Evaluate if the user is asking a Competency Question (CQ).
+
+         If that is the case, their queston will look something like this: 'Where in the city does there exist vacant parcels of land?'
+
+         If this is true, please simply reply 'YES'
+         
+         """}
+    )
+
+    #Agent answers if this is a CQ
+    completion = client.chat.completions.create(
+            model=model_name,
+            messages=messages,
+        )
+    response = completion.choices[0].message.content
+
+    messages.append({"role": "assistant", "content": response})
+
+    #Evaluating response
+    if response == "YES":
+        pass
+
 #Main agent loop
 def initialize_agent_prompting(
         client: Groq,
@@ -75,6 +106,9 @@ def initialize_agent_prompting(
         user_prompt = input(">> ")
         messages.append({"role": "user", "content": user_prompt}) #preserves conversation memory
 
+        #evaluating if user is asking CQ question
+        messages = evaluate_potential_cq(messages, client, model_name)
+
         completion = client.chat.completions.create(
             model=model_name,
             messages=messages,
@@ -85,21 +119,62 @@ def initialize_agent_prompting(
 
         print("\n" + response + "\n")
 
+def query_endpoint(repo_id: str, query: str, default_address: str = "http://localhost:7200/repositories/"):
+    repo_address = default_address + repo_id
+
+    sparql = SPARQLWrapper(repo_address)
+
+    #querying
+    sparql.setQuery(query)
+    sparql.setReturnFormat(JSON)
+    results = sparql.query().convert()
+
+    return results
+
 # d = initialize_dataset()
 
-# #Testing a query to get han solo's height
-# query: str = """
-# SELECT ?height WHERE {
-#   ?character rdfs:label "Han Solo"@en .
-#   ?character <https://swapi.co/vocabulary/height> ?height .
-# }
-# """
+#Randomly selects one object
+q: str = """
+PREFIX hp:  <http://ontology.eil.utoronto.ca/HPCDM/>
+PREFIX i72: <http://ontology.eil.utoronto.ca/ISO21972/iso21972#>
+PREFIX loc: <https://standards.iso.org/iso-iec/5087/-1/ed-1/en/ontology/SpatialLoc/>
+PREFIX geo: <http://www.opengis.net/ont/geosparql#>
 
-# results = d.query(query)
+SELECT ?p ?a ?pr ?pl WHERE {
+    ?p a hp:Parcel ;
+       hp:hasArea ?areaObj ;
+       hp:hasPerimter ?perObj ;
+       loc:hasLocation ?locObj .
 
-# for row in results:
-#     print(row)
+    # Ensure no building occupies this parcel
+    FILTER NOT EXISTS {
+        ?b a hp:Building ;
+           hp:occupies ?p .
+    }
 
-initialize_agent()
+    # Area
+    ?areaObj i72:hasValue ?areaMeasure .
+    ?areaMeasure i72:hasNumericalValue ?a .
+
+    # Perimeter
+    ?perObj i72:hasValue ?perMeasure .
+    ?perMeasure i72:hasNumericalValue ?pr .
+
+    # Polygon
+    ?locObj geo:asWKT ?pl .
+}
+ORDER BY RAND()
+LIMIT 1
+ 
+"""
+
+results = query_endpoint(repo_id="HALIFAX_DT", query=q)
+
+for result in results["results"]["bindings"]:
+        for key, val in result.items():
+            print(type(val))
+            print(f"{key}: {val}\n")
+
+# initialize_agent()
 
 exit()

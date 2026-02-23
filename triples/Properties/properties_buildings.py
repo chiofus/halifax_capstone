@@ -116,9 +116,9 @@ def create_parcel_triples(input_geojson: str, input_csv:str, output_file: str, f
 
 
 if __name__ == "__main__":
-    create_parcel_triples("raw_data\\properties_buildings\\all_parcels_buildings.geojson",
-                          "raw_data\\properties_buildings\\all_parcels_buildings.csv",
-                          "raw_data\\properties_buildings\\output.ttl",
+    create_parcel_triples("raw_data\\properties_buildings\\Buildings_6259731988453899976.geojson",
+                          "raw_data\\properties_buildings\\Buildings_329937383183005496.csv",
+                          "raw_data\\properties_buildings\\one_sample.ttl",
                           format="turtle")
     # For bulk load speed:
     # convert_geojson("input.geojson", "output.nt", format="nt")
