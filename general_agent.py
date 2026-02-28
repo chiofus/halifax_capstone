@@ -2,6 +2,55 @@ from rdflib import Dataset, Graph
 from groq import Groq
 import os
 from SPARQLWrapper import SPARQLWrapper, JSON
+from typing import Tuple
+from query_tools.conversions import add_approx_loc_to_sparql_return
+from polars import DataFrame
+
+#GLOBAL OBJS
+ALL_QUERIES_REF = [
+    {
+        "id":
+        "cq_1",
+        
+        "original":
+        """Where in the city does there exist vacant parcels of land?""",
+
+        "query":
+        """
+        PREFIX hp:  <http://ontology.eil.utoronto.ca/HPCDM/>
+        PREFIX i72: <http://ontology.eil.utoronto.ca/ISO21972/iso21972#>
+        PREFIX loc: <https://standards.iso.org/iso-iec/5087/-1/ed-1/en/ontology/SpatialLoc/>
+        PREFIX geo: <http://www.opengis.net/ont/geosparql#>
+
+        SELECT ?p ?a ?pr ?pl WHERE {
+            ?p a hp:Parcel ;
+            hp:hasArea ?areaObj ;
+            hp:hasPerimeter ?perObj ;
+            loc:hasLocation ?locObj .
+
+            # Ensure no building occupies this parcel
+            FILTER NOT EXISTS {
+                ?b a hp:Building ;
+                hp:occupies ?p .
+            }
+
+            # Area
+            ?areaObj i72:hasValue ?areaMeasure .
+            ?areaMeasure i72:hasNumericalValue ?a .
+
+            # Perimeter
+            ?perObj i72:hasValue ?perMeasure .
+            ?perMeasure i72:hasNumericalValue ?pr .
+
+            # Polygon
+            ?locObj geo:asWKT ?pl .
+        }
+        ORDER BY RAND()
+        LIMIT 1
+        
+        """
+    }
+]
 
 def initialize_dataset() -> Dataset | Graph:
     d = Graph()
@@ -15,20 +64,13 @@ def initialize_dataset() -> Dataset | Graph:
 
 #GROQ CLIENT
 
-def initialize_groq_client() -> Groq:
-    return Groq(
-        api_key=os.environ.get("GROQ_API_KEY")  #Make sure to setup your key first in env vars
-    )
-
 def generate_agent_intro(
         client: Groq,
         model_name: str
-) -> None:
+) -> list:
     print("Generating agent introduction...\n")
 
-    completion = client.chat.completions.create(
-        model=model_name,
-        messages=[
+    messages=[
             {
                 "role": "system",
                 "content": "You are a helpful assistant that responds as a pirate."
@@ -41,25 +83,31 @@ def generate_agent_intro(
                     "I may have, all in pirate character, of course."
                 )
             }
-        ],
+        ]
+
+    completion = client.chat.completions.create(
+        model=model_name,
+        messages=messages,
         temperature=0.1,
         max_tokens=256,
     )
 
+    messages = messages.append({"role": "assistant", "content": completion})
+
     print(completion.choices[0].message.content)
-    print()
-    return
+    return messages
 
 def initialize_agent(
-        model_name: str = "openai/gpt-oss-120b" # Change the model you want to use here
+        model_name: str = "openai/gpt-oss-120b" # Change to the model you want to use here
         ):
-    client = initialize_groq_client()
+    client = Groq(
+        api_key=os.environ.get("GROQ_API_KEY")  #Make sure to setup your key first in env vars
+    )
 
-    generate_agent_intro(client, model_name)
     initialize_agent_prompting(client, model_name)
     return
 
-def evaluate_potential_cq(messages: list[dict], client: Groq, model_name: str):
+def evaluate_potential_cq(messages: list[dict], client: Groq, model_name: str) -> Tuple[list[dict], bool]:
     #Decides if the user is asking a CQ question, so that a query can be ran for it.
 
     #Appending decision question to given user prompt
@@ -73,7 +121,7 @@ def evaluate_potential_cq(messages: list[dict], client: Groq, model_name: str):
 
          If this is true, please simply reply 'YES'
          
-         """}
+         """} #This one only holds for the first CQ, implement logic for giving context for any CQ
     )
 
     #Agent answers if this is a CQ
@@ -83,11 +131,17 @@ def evaluate_potential_cq(messages: list[dict], client: Groq, model_name: str):
         )
     response = completion.choices[0].message.content
 
-    messages.append({"role": "assistant", "content": response})
+    messages = messages.append({"role": "assistant", "content": response})
 
-    #Evaluating response
     if response == "YES":
-        pass
+        return (messages, True)
+
+    return (messages, False)
+
+def process_query_response(query: dict):
+    raw_query_response = query_endpoint(query["query"])
+
+    return
 
 #Main agent loop
 def initialize_agent_prompting(
@@ -98,20 +152,30 @@ def initialize_agent_prompting(
     This will be the main loop where the user can keep prompting the agent.
     """
 
-    messages = [
-        {"role": "system", "content": "You are a pirate assistant."}
-    ]
+    messages = generate_agent_intro(client, model_name)
 
     while True:
         user_prompt = input(">> ")
         messages.append({"role": "user", "content": user_prompt}) #preserves conversation memory
 
         #evaluating if user is asking CQ question
-        messages = evaluate_potential_cq(messages, client, model_name)
+        messages, cq_check = evaluate_potential_cq(messages, client, model_name)
+
+        if cq_check:
+            #hardcoded for now, implement logic to detect correct query once we have more queries
+            identified_query = ALL_QUERIES_REF["cq_1"]
+
+            #extra processing steps for raw query output
+            query_response: str = process_query_response(identified_query)
+
+            messages = messages.append({"role": "system",
+                                                 "content": f"Here is the system's output for the query: {query_response}"})
 
         completion = client.chat.completions.create(
             model=model_name,
             messages=messages,
+            temperature=0.1,
+            max_tokens=256
         )
 
         response = completion.choices[0].message.content
@@ -119,7 +183,7 @@ def initialize_agent_prompting(
 
         print("\n" + response + "\n")
 
-def query_endpoint(repo_id: str, query: str, default_address: str = "http://localhost:7200/repositories/"):
+def query_endpoint(query: str, repo_id: str = "HALIFAX_DT", default_address: str = "http://localhost:7200/repositories/"):
     repo_address = default_address + repo_id
 
     sparql = SPARQLWrapper(repo_address)
@@ -131,46 +195,11 @@ def query_endpoint(repo_id: str, query: str, default_address: str = "http://loca
 
     return results
 
-# d = initialize_dataset()
+results = query_endpoint(ALL_QUERIES_REF[0]["query"])
 
-#Randomly selects one object
-q: str = """
-PREFIX hp:  <http://ontology.eil.utoronto.ca/HPCDM/>
-PREFIX i72: <http://ontology.eil.utoronto.ca/ISO21972/iso21972#>
-PREFIX loc: <https://standards.iso.org/iso-iec/5087/-1/ed-1/en/ontology/SpatialLoc/>
-PREFIX geo: <http://www.opengis.net/ont/geosparql#>
+approx_loc_added = add_approx_loc_to_sparql_return(results)
 
-SELECT ?p ?a ?pr ?pl WHERE {
-    ?p a hp:Parcel ;
-       hp:hasArea ?areaObj ;
-       hp:hasPerimeter ?perObj ;
-       loc:hasLocation ?locObj .
-
-    # Ensure no building occupies this parcel
-    FILTER NOT EXISTS {
-        ?b a hp:Building ;
-           hp:occupies ?p .
-    }
-
-    # Area
-    ?areaObj i72:hasValue ?areaMeasure .
-    ?areaMeasure i72:hasNumericalValue ?a .
-
-    # Perimeter
-    ?perObj i72:hasValue ?perMeasure .
-    ?perMeasure i72:hasNumericalValue ?pr .
-
-    # Polygon
-    ?locObj geo:asWKT ?pl .
-}
-ORDER BY RAND()
-LIMIT 1
- 
-"""
-
-results = query_endpoint(repo_id="HALIFAX_DT", query=q)
-
-for result in results["results"]["bindings"]:
+for result in approx_loc_added["results"]["bindings"]:
         for key, val in result.items():
             print(type(val))
             print(f"{key}: {val}\n")
