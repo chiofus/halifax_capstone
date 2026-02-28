@@ -1,10 +1,8 @@
 import orjson
-from pathlib import Path
 from rdflib import Graph, Namespace, Literal, URIRef
 from rdflib.namespace import RDF, XSD
 from shapely.geometry import shape
 from shapely.wkt import dumps as wkt_dumps
-from email.utils import parsedate_to_datetime
 import polars as pl
 from tqdm import tqdm
 
