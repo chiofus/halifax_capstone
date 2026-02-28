@@ -143,7 +143,7 @@ PREFIX geo: <http://www.opengis.net/ont/geosparql#>
 SELECT ?p ?a ?pr ?pl WHERE {
     ?p a hp:Parcel ;
        hp:hasArea ?areaObj ;
-       hp:hasPerimter ?perObj ;
+       hp:hasPerimeter ?perObj ;
        loc:hasLocation ?locObj .
 
     # Ensure no building occupies this parcel

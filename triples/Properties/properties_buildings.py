@@ -70,7 +70,7 @@ def create_parcel_triples(input_geojson: str, input_csv:str, output_file: str, f
             g.add((area_uri, I72.hasValue, area_measure_uri))
             g.add((perimeter_uri, I72.hasValue, perimeter_measure_uri))
             g.add((property_uri, HP.hasArea, area_uri))
-            g.add((property_uri, HP.hasPerimter, perimeter_uri)) #I think the misspell of 'perimter' is intentional, this is how it is defined in the ontology
+            g.add((property_uri, HP.hasPerimeter, perimeter_uri))
 
             #units and values
             obj_data = csv_data.filter(pl.col("OBJECTID") == object_id) #csv data filtered to curr object
