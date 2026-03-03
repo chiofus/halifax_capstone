@@ -2,6 +2,7 @@ from datetime import datetime, date
 import polars as pl
 from SPARQLWrapper import SPARQLWrapper, JSON
 from shapely import wkt
+from copy import deepcopy
 
 XSD_INT = {
     "http://www.w3.org/2001/XMLSchema#integer",
@@ -66,17 +67,18 @@ def cast_value(value_dict: dict):
     return value
 
 def convert_default_sparql_to_df(results: dict):
-    vars_ = results["head"]["vars"]
-    bindings = results["results"]["bindings"]
+    # vars_ = list(results["results"]["bindings"])
+    bindings: dict[dict] = results["results"]["bindings"]
 
     rows = []
     for binding in bindings:
         row = {}
-        for var in vars_:
-            if var in binding:
-                row[var] = cast_value(binding[var])
-            else:
-                row[var] = None
+        curr_vars = list(binding.keys())
+        for var in curr_vars:
+            # if var in binding:
+            row[var] = cast_value(binding[var])
+            # else:
+            #     row[var] = None
         rows.append(row)
 
     return pl.DataFrame(rows)
@@ -106,7 +108,9 @@ def polygon_to_google_maps_link(wkt_literal: str) -> str:
 def add_approx_loc_to_sparql_return(results: dict) -> dict:
     #adds a google maps approx loc, when a polygon object is present
 
-    for result in results["results"]["bindings"]:
+    results_copy = deepcopy(results)
+
+    for inx, result in enumerate(results["results"]["bindings"]):
         for key, val in result.items():
             # print(type(val))
             # print(f"{key}: {val}\n")
@@ -114,9 +118,8 @@ def add_approx_loc_to_sparql_return(results: dict) -> dict:
             #checking if polygon present
             try:
                 if val['datatype'] == "http://www.opengis.net/ont/geosparql#wktLiteral": #polygon object
-                    val['approx_loc'] = polygon_to_google_maps_link(val['value'])
+                    results_copy["results"]["bindings"][inx]['approx_loc'] = {'value': polygon_to_google_maps_link(val['value'])}
             except:
                 continue
     
-    return results #modified original obj
-            
+    return results_copy #modified original obj

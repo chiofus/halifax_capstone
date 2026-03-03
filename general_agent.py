@@ -3,7 +3,7 @@ from groq import Groq
 import os
 from SPARQLWrapper import SPARQLWrapper, JSON
 from typing import Tuple
-from query_tools.conversions import add_approx_loc_to_sparql_return
+from query_tools.conversions import add_approx_loc_to_sparql_return, convert_default_sparql_to_df
 from polars import DataFrame
 
 #GLOBAL OBJS
@@ -46,7 +46,7 @@ ALL_QUERIES_REF = [
             ?locObj geo:asWKT ?pl .
         }
         ORDER BY RAND()
-        LIMIT 1
+        LIMIT 3
         
         """
     }
@@ -88,13 +88,15 @@ def generate_agent_intro(
     completion = client.chat.completions.create(
         model=model_name,
         messages=messages,
-        temperature=0.1,
-        max_tokens=256,
+        # temperature=0.1,
+        # max_tokens=256,
     )
 
-    messages = messages.append({"role": "assistant", "content": completion})
+    response = completion.choices[0].message.content
 
-    print(completion.choices[0].message.content)
+    messages.append({"role": "assistant", "content": response})
+
+    print(response)
     return messages
 
 def initialize_agent(
@@ -104,15 +106,15 @@ def initialize_agent(
         api_key=os.environ.get("GROQ_API_KEY")  #Make sure to setup your key first in env vars
     )
 
-    initialize_agent_prompting(client, model_name)
+    prompt_agent(client, model_name)
     return
 
 def evaluate_potential_cq(messages: list[dict], client: Groq, model_name: str) -> Tuple[list[dict], bool]:
     #Decides if the user is asking a CQ question, so that a query can be ran for it.
 
     #Appending decision question to given user prompt
-    messages = messages.append(
-        {"role": "system", "content": """
+    messages.append(
+        {"role": "user", "content": """
          Please remember that you are an intelligent chatbot assistant ready to answer housing related questions for the city of Halifax, Canada.
 
          Evaluate if the user is asking a Competency Question (CQ).
@@ -120,6 +122,8 @@ def evaluate_potential_cq(messages: list[dict], client: Groq, model_name: str) -
          If that is the case, their queston will look something like this: 'Where in the city does there exist vacant parcels of land?'
 
          If this is true, please simply reply 'YES'
+
+         If not true, please simply reply 'NO'
          
          """} #This one only holds for the first CQ, implement logic for giving context for any CQ
     )
@@ -128,10 +132,11 @@ def evaluate_potential_cq(messages: list[dict], client: Groq, model_name: str) -
     completion = client.chat.completions.create(
             model=model_name,
             messages=messages,
+            # temperature=0.1,
         )
     response = completion.choices[0].message.content
 
-    messages = messages.append({"role": "assistant", "content": response})
+    messages.append({"role": "assistant", "content": response})
 
     if response == "YES":
         return (messages, True)
@@ -140,11 +145,18 @@ def evaluate_potential_cq(messages: list[dict], client: Groq, model_name: str) -
 
 def process_query_response(query: dict):
     raw_query_response = query_endpoint(query["query"])
+    response: str = ''
 
-    return
+    #Now, need to check if any special modfications are needed, based on the query answered
+
+    #Keep building, for now just checks q1
+    if query['id'] in ['cq_1']: #checking if query id is cq_1
+        response = add_approx_loc_to_sparql_return(raw_query_response) #if cq1, need to add approx google map's loc
+
+    return response
 
 #Main agent loop
-def initialize_agent_prompting(
+def prompt_agent(
         client: Groq,
         model_name: str
 ) -> None:
@@ -163,19 +175,35 @@ def initialize_agent_prompting(
 
         if cq_check:
             #hardcoded for now, implement logic to detect correct query once we have more queries
-            identified_query = ALL_QUERIES_REF["cq_1"]
+            identified_query = ALL_QUERIES_REF[0]
 
             #extra processing steps for raw query output
             query_response: str = process_query_response(identified_query)
 
-            messages = messages.append({"role": "system",
-                                                 "content": f"Here is the system's output for the query: {query_response}"})
+            messages.append({"role": "user",
+                            "content": f"""
+                                Here is the system's output for the query of '{identified_query['original']}': 
+                                {query_response}
+
+                                Can you please reply it back to the user exactly as it is presented here?
+                            """
+                            })
+        
+        else:
+            #Implement logic for transitioning into generative response, for now simply keep conversation going
+            messages.append({
+                "role": "user",
+                "content": """
+                    Since no specific competency question was asked, please simply continue as normal,
+                    and generate some creative response for the original prompt
+                """
+            })
 
         completion = client.chat.completions.create(
             model=model_name,
             messages=messages,
-            temperature=0.1,
-            max_tokens=256
+            # temperature=0.1,
+            # max_tokens=256
         )
 
         response = completion.choices[0].message.content
@@ -195,15 +223,17 @@ def query_endpoint(query: str, repo_id: str = "HALIFAX_DT", default_address: str
 
     return results
 
-results = query_endpoint(ALL_QUERIES_REF[0]["query"])
+# results = query_endpoint(ALL_QUERIES_REF[0]["query"])
 
-approx_loc_added = add_approx_loc_to_sparql_return(results)
+# approx_loc_added = add_approx_loc_to_sparql_return(results)
 
-for result in approx_loc_added["results"]["bindings"]:
-        for key, val in result.items():
-            print(type(val))
-            print(f"{key}: {val}\n")
+# for result in approx_loc_added["results"]["bindings"]:
+#         for key, val in result.items():
+#             print(type(val))
+#             print(f"{key}: {val}\n")
+# print(convert_default_sparql_to_df(approx_loc_added))
+# print(approx_loc_added["results"]["bindings"])
 
-# initialize_agent()
+initialize_agent(model_name="groq/compound")
 
 exit()
