@@ -5,6 +5,7 @@ from SPARQLWrapper import SPARQLWrapper, JSON
 from typing import Tuple
 from query_tools.conversions import add_approx_loc_to_sparql_return, convert_default_sparql_to_df
 from polars import DataFrame
+from openai import OpenAI
 
 #GLOBAL OBJS
 ALL_QUERIES_REF = [
@@ -52,6 +53,8 @@ ALL_QUERIES_REF = [
     }
 ]
 
+CURR_STYLE = "developer" #determines which role convention to use (developer for openai, system for groq)
+
 def initialize_dataset() -> Dataset | Graph:
     d = Graph()
     try:
@@ -65,42 +68,54 @@ def initialize_dataset() -> Dataset | Graph:
 #GROQ CLIENT
 
 def generate_agent_intro(
-        client: Groq,
+        client: Groq | OpenAI,
         model_name: str
 ) -> list:
     print("Generating agent introduction...\n")
 
     messages=[
             {
-                "role": "system",
-                "content": "You are a helpful assistant that responds as a pirate."
+                "role": CURR_STYLE,
+                "content": """You are a helpful assistant agent and an expert in the city of Halifax, powered by a housing Ontology all about the city of Halifax.
+                When answering user prompts, please do not give a detailed breakdown of how you analyzed past inputs to answer the questions, but rather continue
+                the conversation in a natural tone. Please note that you are *specifically* designed to answer housing related questions."""
             },
             {
                 "role": "user",
-                "content": (
-                    "Give me a quick introduction of who you are and what you can do for me. "
-                    "Finish by stating that you are ready to continue answering any questions "
-                    "I may have, all in pirate character, of course."
-                )
+                "content": """
+                    Give me a quick introduction of who you are and what you can do for me.
+                    Finish by stating that you are ready to continue answering any questions.
+                    Make sure to highlight your expertise in housing realted questions.
+                """
             }
         ]
 
-    completion = client.chat.completions.create(
-        model=model_name,
-        messages=messages,
-        # temperature=0.1,
-        # max_tokens=256,
-    )
+    if type(client) == Groq:
+        completion = client.chat.completions.create(
+            model=model_name,
+            messages=messages,
+            # temperature=0.1,
+            # max_tokens=256,
+        )
 
-    response = completion.choices[0].message.content
+        response = completion.choices[0].message.content
+    
+    else:
+        completion = client.responses.create(
+            # reasoning={"effort": "low"},
+            model=model_name,
+            input=messages
+        )
+
+        response = completion.output_text
 
     messages.append({"role": "assistant", "content": response})
 
     print(response)
     return messages
 
-def initialize_agent(
-        model_name: str = "openai/gpt-oss-120b" # Change to the model you want to use here
+def initialize_agent_groq(
+        model_name: str # Change to the model you want to use here
         ):
     client = Groq(
         api_key=os.environ.get("GROQ_API_KEY")  #Make sure to setup your key first in env vars
@@ -109,12 +124,12 @@ def initialize_agent(
     prompt_agent(client, model_name)
     return
 
-def evaluate_potential_cq(messages: list[dict], client: Groq, model_name: str) -> Tuple[list[dict], bool]:
+def evaluate_potential_cq(messages: list[dict], client: Groq | OpenAI, model_name: str) -> Tuple[list[dict], bool]:
     #Decides if the user is asking a CQ question, so that a query can be ran for it.
 
     #Appending decision question to given user prompt
     messages.append(
-        {"role": "user", "content": """
+        {"role": CURR_STYLE, "content": """
          Please remember that you are an intelligent chatbot assistant ready to answer housing related questions for the city of Halifax, Canada.
 
          Evaluate if the user is asking a Competency Question (CQ).
@@ -129,12 +144,7 @@ def evaluate_potential_cq(messages: list[dict], client: Groq, model_name: str) -
     )
 
     #Agent answers if this is a CQ
-    completion = client.chat.completions.create(
-            model=model_name,
-            messages=messages,
-            # temperature=0.1,
-        )
-    response = completion.choices[0].message.content
+    response = generate_agent_response(client, model_name, messages)
 
     messages.append({"role": "assistant", "content": response})
 
@@ -142,6 +152,29 @@ def evaluate_potential_cq(messages: list[dict], client: Groq, model_name: str) -
         return (messages, True)
 
     return (messages, False)
+
+def generate_agent_response(client: Groq | OpenAI, model_name: str, messages: dict, temp: float = 0.1) -> str: #simply returns agent's text output
+    response: str = ''
+
+    if type(client) == Groq:
+        completion = client.chat.completions.create(
+            model=model_name,
+            messages=messages,
+            temperature=temp,
+        )
+        response = completion.choices[0].message.content
+
+    else:
+        completion = client.responses.create( #template for openai agent
+            # reasoning={"effort": "low"},
+            model=model_name,
+            input=messages,
+            temperature=temp,
+        )
+
+        response = completion.output_text
+
+    return response
 
 def process_query_response(query: dict):
     raw_query_response = query_endpoint(query["query"])
@@ -155,9 +188,21 @@ def process_query_response(query: dict):
 
     return response
 
+#OpenAI agent
+def initialize_agent_openai(model_name: str):
+    client = OpenAI()
+
+    # response = client.responses.create(
+    #     model=model_name,
+    #     input="Write a short bedtime story about a unicorn."
+    # )
+
+    prompt_agent(client, model_name)
+    return
+
 #Main agent loop
 def prompt_agent(
-        client: Groq,
+        client: Groq | OpenAI,
         model_name: str
 ) -> None:
     """
@@ -180,7 +225,7 @@ def prompt_agent(
             #extra processing steps for raw query output
             query_response: str = process_query_response(identified_query)
 
-            messages.append({"role": "user",
+            messages.append({"role": CURR_STYLE,
                             "content": f"""
                                 Here is the system's output for the query of '{identified_query['original']}': 
                                 {query_response}
@@ -192,21 +237,14 @@ def prompt_agent(
         else:
             #Implement logic for transitioning into generative response, for now simply keep conversation going
             messages.append({
-                "role": "user",
+                "role": CURR_STYLE,
                 "content": """
                     Since no specific competency question was asked, please simply continue as normal,
                     and generate some creative response for the original prompt
                 """
             })
 
-        completion = client.chat.completions.create(
-            model=model_name,
-            messages=messages,
-            # temperature=0.1,
-            # max_tokens=256
-        )
-
-        response = completion.choices[0].message.content
+        response = generate_agent_response(client, model_name, messages)
         messages.append({"role": "assistant", "content": response})
 
         print("\n" + response + "\n")
@@ -234,6 +272,6 @@ def query_endpoint(query: str, repo_id: str = "HALIFAX_DT", default_address: str
 # print(convert_default_sparql_to_df(approx_loc_added))
 # print(approx_loc_added["results"]["bindings"])
 
-initialize_agent(model_name="groq/compound")
+initialize_agent_openai(model_name="gpt-5.4")
 
 exit()
