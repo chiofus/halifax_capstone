@@ -6,9 +6,11 @@ from typing import Tuple
 from query_tools.conversions import add_approx_loc_to_sparql_return, convert_default_sparql_to_df
 from polars import DataFrame
 from openai import OpenAI
+from pprint import pformat
 
 #GLOBAL OBJS
 ALL_QUERIES_REF = [
+    #Note that all queries have a 10 results limit for testing
     {
         "id":
         "cq_1",
@@ -23,7 +25,8 @@ ALL_QUERIES_REF = [
         PREFIX loc: <https://standards.iso.org/iso-iec/5087/-1/ed-1/en/ontology/SpatialLoc/>
         PREFIX geo: <http://www.opengis.net/ont/geosparql#>
 
-        SELECT ?p ?a ?pr ?pl WHERE {
+        SELECT ?p ?a ?aUnit ?pr ?prUnit ?pl
+        WHERE {
             ?p a hp:Parcel ;
             hp:hasArea ?areaObj ;
             hp:hasPerimeter ?perObj ;
@@ -37,18 +40,41 @@ ALL_QUERIES_REF = [
 
             # Area
             ?areaObj i72:hasValue ?areaMeasure .
-            ?areaMeasure i72:hasNumericalValue ?a .
+            ?areaMeasure i72:hasNumericalValue ?a ;
+                        i72:hasUnit ?aUnit .
 
             # Perimeter
             ?perObj i72:hasValue ?perMeasure .
-            ?perMeasure i72:hasNumericalValue ?pr .
+            ?perMeasure i72:hasNumericalValue ?pr ;
+                        i72:hasUnit ?prUnit .
 
             # Polygon
             ?locObj geo:asWKT ?pl .
         }
         ORDER BY RAND()
-        LIMIT 3
+        LIMIT 10
         
+        """
+    },
+
+    {
+        'id': 'cq_2',
+        'original': 'Who owns parcel x?',
+        'query':
+        """
+        PREFIX cot: <http://ontology.eil.utoronto.ca/Halifax/Halifax-DT-Capstone#>
+        PREFIX hp:  <http://ontology.eil.utoronto.ca/HPCDM/>
+
+        SELECT ?property ?building ?owner
+        WHERE {
+            VALUES ?property { CUSTOM_PROPERTY_OBJ }
+
+            OPTIONAL {
+                ?building a hp:Building ;
+                        hp:occupies ?property .
+                OPTIONAL { ?building hp:hasOwner ?owner . }
+            }
+        }
         """
     }
 ]
@@ -78,7 +104,17 @@ def generate_agent_intro(
                 "role": CURR_STYLE,
                 "content": """You are a helpful assistant agent and an expert in the city of Halifax, powered by a housing Ontology all about the city of Halifax.
                 When answering user prompts, please do not give a detailed breakdown of how you analyzed past inputs to answer the questions, but rather continue
-                the conversation in a natural tone. Please note that you are *specifically* designed to answer housing related questions."""
+                the conversation in a natural tone. Please note that you are *specifically* designed to answer housing related questions.
+                
+                Here is background on the project you will be used for: **star of background**
+
+                Problem Statement: The Canadian housing market has experienced both record demand and periods of slowed growth in recent years, highlighting its unpredictable nature. As a result, investors and government agencies have become more cautious in their approach to housing development. This has created a growing need for reliable “Housing Potential” assessment tools that can guide decision-making, reduce underutilized housing, and ultimately improve housing value for Canadian residents.
+                In response to this challenge, a Natural Language Querying solution, Halifax.Ai, was designed to help stakeholders assess housing potential in Halifax. The system leverages a data-rich knowledge graph combined with the latest models from OpenAI to generate reliable, truthful responses to a wide range of housing-related questions that developers and planners may have.
+                **end of background**
+
+                In this case, you are Halifax.Ai. Please internalize this problem statement and use it to better understand your role as an intelligent
+                chatbot assistant.
+                """
             },
             {
                 "role": "user",
@@ -129,18 +165,24 @@ def evaluate_potential_cq(messages: list[dict], client: Groq | OpenAI, model_nam
 
     #Appending decision question to given user prompt
     messages.append(
-        {"role": CURR_STYLE, "content": """
-         Please remember that you are an intelligent chatbot assistant ready to answer housing related questions for the city of Halifax, Canada.
-
+        {"role": CURR_STYLE, "content": f"""
          Evaluate if the user is asking a Competency Question (CQ).
 
-         If that is the case, their queston will look something like this: 'Where in the city does there exist vacant parcels of land?'
+         Below is a list of the CQs:
 
-         If this is true, please simply reply 'YES'
+         {pformat(
+             [query['original'] for query in [dict_obj for dict_obj in ALL_QUERIES_REF]]
+         )}
+
+         Find the question that BEST matches the user's input, if one exists, and return the index.
+
+         For example, if the first question matches the best, return 0, if the second one matches the best, return 1, and so on.
+
+         If this is true, please simply reply with the index of the best match.
 
          If not true, please simply reply 'NO'
          
-         """} #This one only holds for the first CQ, implement logic for giving context for any CQ
+         """}
     )
 
     #Agent answers if this is a CQ
@@ -148,8 +190,8 @@ def evaluate_potential_cq(messages: list[dict], client: Groq | OpenAI, model_nam
 
     messages.append({"role": "assistant", "content": response})
 
-    if response == "YES":
-        return (messages, True)
+    if response != "No":
+        return (messages, int(response))
 
     return (messages, False)
 
@@ -176,26 +218,67 @@ def generate_agent_response(client: Groq | OpenAI, model_name: str, messages: di
 
     return response
 
-def process_query_response(query: dict):
-    raw_query_response = query_endpoint(query["query"])
+def process_query_response(query: dict[str, str], messages: list, model_name: str, client: Groq | OpenAI):
     response: str = ''
 
     #Now, need to check if any special modfications are needed, based on the query answered
 
     #Keep building, for now just checks q1
-    if query['id'] in ['cq_1']: #checking if query id is cq_1
-        response = add_approx_loc_to_sparql_return(raw_query_response) #if cq1, need to add approx google map's loc
+    query_id = query['id']
+    if query_id in ['cq_1']: #checking if query id is cq_1
+        response = add_approx_loc_to_sparql_return(query_endpoint(query["query"])) #if cq1, need to add approx google map's loc
+
+    elif query_id in ['cq_2']:
+        #User should have provided some propery id object identifier, so make gpt find it:
+        messages.append(
+            {
+                "role": CURR_STYLE,
+                "content":
+                """
+                Since the user is (or should be) asking about a SPECIFIC property object, please look for this property object number in their input.
+
+                If their input looks something like this: 'Who owns parcel 426324?', then we know they are looking for object '426324'.
+
+                Notice how it is supposed to be a SIX digit integer number.
+
+                Now that you identified the correct property object number, please reply to this prompt as follows:
+
+                1. Take the identified, SIX digit propery object.
+                2. Put it into this format: 'cot:Property426324'
+                3. Notice how we have 'cot:Property' followed by the six digit number you identified.
+                
+                Reply to this prompt ONLY with the identified number in the format specified above.
+                For example, if you found 426324 in the user's input, then simply reply this: cot:Property426324
+
+                """
+            }
+        )
+
+        #Agent answers if this is a CQ
+        agents_response = generate_agent_response(client, model_name, messages)
+        messages.append({"role": "assistant", "content": agents_response})
+
+        #Now, run query with custom property id
+        response = query_endpoint(query["query"].replace("CUSTOM_PROPERTY_OBJ", agents_response))
+
+        #Adding extra notes
+        messages.append({"role": CURR_STYLE, "content": 
+                         """
+                            You will find the query response in the next item.
+
+                            Please note that each response shows a BUILDING owner, not a parcel owner.
+
+                            If owners are found, a building will also be found.
+
+                            In your response, please specify that you found (a) Building(s) associated with the given property, when present, and also
+                            list the owner(s) in question.
+                            """})
 
     return response
 
 #OpenAI agent
 def initialize_agent_openai(model_name: str):
     client = OpenAI()
-
-    # response = client.responses.create(
-    #     model=model_name,
-    #     input="Write a short bedtime story about a unicorn."
-    # )
 
     prompt_agent(client, model_name)
     return
@@ -218,19 +301,18 @@ def prompt_agent(
         #evaluating if user is asking CQ question
         messages, cq_check = evaluate_potential_cq(messages, client, model_name)
 
-        if cq_check:
-            #hardcoded for now, implement logic to detect correct query once we have more queries
-            identified_query = ALL_QUERIES_REF[0]
+        if cq_check != 'No':
+            identified_query = ALL_QUERIES_REF[cq_check]
 
             #extra processing steps for raw query output
-            query_response: str = process_query_response(identified_query)
+            query_response: str = process_query_response(identified_query, messages, model_name, client)
 
             messages.append({"role": CURR_STYLE,
                             "content": f"""
-                                Here is the system's output for the query of '{identified_query['original']}': 
+                                Here is the system's output for the query: 
                                 {query_response}
 
-                                Can you please reply it back to the user exactly as it is presented here?
+                                Can you please summarize the answer in some way and present it back to the user?
                             """
                             })
         
@@ -260,17 +342,6 @@ def query_endpoint(query: str, repo_id: str = "HALIFAX_DT", default_address: str
     results = sparql.query().convert()
 
     return results
-
-# results = query_endpoint(ALL_QUERIES_REF[0]["query"])
-
-# approx_loc_added = add_approx_loc_to_sparql_return(results)
-
-# for result in approx_loc_added["results"]["bindings"]:
-#         for key, val in result.items():
-#             print(type(val))
-#             print(f"{key}: {val}\n")
-# print(convert_default_sparql_to_df(approx_loc_added))
-# print(approx_loc_added["results"]["bindings"])
 
 initialize_agent_openai(model_name="gpt-5.4")
 
