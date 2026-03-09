@@ -29,7 +29,7 @@ def fast_literal(value):
             return Literal(value)
     return Literal(str(value))
 
-def create_triples(input_geojson: str, input_csv:str, output_file: str, format="turtle"):
+def create_triples(input_geojson: str, output_file: str, input_csv:str='', format="turtle"):
     g = Graph()
     g.bind("hp", HP)
     g.bind("cot", COT)
@@ -41,24 +41,26 @@ def create_triples(input_geojson: str, input_csv:str, output_file: str, format="
     print("Loading .geojson data...")
     with open(input_geojson, "rb") as f: #loading geojson
         data = orjson.loads(f.read())
-    data_len = len(data["features"])
 
-    print("Loading .csv data...")
-    csv_data = pl.read_csv(input_csv) #loading csv data
+    if input_csv:
+        print("Loading .csv data...")
+        csv_data = pl.read_csv(input_csv) #loading csv data
+
+    common_data_name: str = "UseZone"
 
     print("Creating triples...")
-    for index, feature in enumerate(tqdm(data["features"])): #Building parcel triples
+    for index, feature in enumerate(tqdm(data["features"])): #Building zone uses triples
         try:
-            object_id = feature["properties"].get("OBJECTID") #uses object id to reference parcel ids
-            property_uri = URIRef(COT[f"Property{object_id}"])
-            loc_uri = URIRef(COT[f"PropertyLoc{object_id}"])
-            area_uri = URIRef(COT[f"PropertyArea{object_id}"])
-            area_measure_uri = URIRef(COT[f"PropertyAreaMeasure{object_id}"])
-            perimeter_uri = URIRef(COT[f"PropertyPerimeter{object_id}"])
-            perimeter_measure_uri = URIRef(COT[f"PropertyPerimeterMeasure{object_id}"])
+            object_id = feature["properties"].get("OBJECTID") #uses object id to create unique zone id
+            zone_uri = URIRef(COT[f"UseZone{object_id}"])
+            loc_uri = URIRef(COT[f"UseZoneLoc{object_id}"])
+            area_uri = URIRef(COT[f"{common_data_name}Area{object_id}"])
+            area_measure_uri = URIRef(COT[f"{common_data_name}AreaMeasure{object_id}"])
+            perimeter_uri = URIRef(COT[f"{common_data_name}Perimeter{object_id}"])
+            perimeter_measure_uri = URIRef(COT[f"{common_data_name}PerimeterMeasure{object_id}"])
 
             # Feature typing
-            g.add((property_uri, RDF.type, HP.Parcel))
+            g.add((zone_uri, RDF.type, HP.UseZone))
             g.add((loc_uri, RDF.type, LOC.Location))
             g.add((area_uri, RDF.type, CITYUNITS.Area))
             g.add((area_measure_uri, RDF.type, I72.Measure))
@@ -66,11 +68,11 @@ def create_triples(input_geojson: str, input_csv:str, output_file: str, format="
             g.add((perimeter_measure_uri, RDF.type, I72.Measure))
 
             #relations
-            g.add((property_uri, LOC.hasLocation, loc_uri))
+            g.add((zone_uri, LOC.hasLocation, loc_uri))
             g.add((area_uri, I72.hasValue, area_measure_uri))
             g.add((perimeter_uri, I72.hasValue, perimeter_measure_uri))
-            g.add((property_uri, HP.hasArea, area_uri))
-            g.add((property_uri, HP.hasPerimeter, perimeter_uri))
+            g.add((zone_uri, HP.hasArea, area_uri))
+            g.add((zone_uri, HP.hasPerimeter, perimeter_uri))
 
             #units and values
             obj_data = csv_data.filter(pl.col("OBJECTID") == object_id) #csv data filtered to curr object
@@ -78,6 +80,9 @@ def create_triples(input_geojson: str, input_csv:str, output_file: str, format="
             g.add((area_measure_uri, I72.hasNumericalValue, fast_literal(obj_data[0, "Shape__Area"])))
             g.add((perimeter_measure_uri, I72.hasUnit, I72.metre))
             g.add((perimeter_measure_uri, I72.hasNumericalValue, fast_literal(obj_data[0, "Shape__Length"])))
+
+            #special values to keep
+            g.add((zone_uri, HP.hasZoneType, fast_literal(feature["properties"].get("DESCRIPTION")))) #keeps the actual zone use in plain english
 
             # Geometry conversion and object
             geom = shape(feature["geometry"])
@@ -88,12 +93,6 @@ def create_triples(input_geojson: str, input_csv:str, output_file: str, format="
                 Literal(f"{wkt}", datatype=GEO.wktLiteral)
             ))
 
-            #adding building references, if they exist
-            building_id = feature["properties"].get("BL_ID")
-            if building_id:
-                building_uri = URIRef(COT[f"Building{building_id}"])
-                g.add((building_uri, RDF.type, HP.Building))
-                g.add((building_uri, HP.occupies, property_uri))
         except Exception as e:
             print(f"Failed to load row {index}:\n{e}")
 
@@ -103,9 +102,9 @@ def create_triples(input_geojson: str, input_csv:str, output_file: str, format="
 
 
 if __name__ == "__main__":
-    create_triples("raw_data/properties_buildings/Buildings_1310805957371431331.geojson",
-                          "raw_data/properties_buildings/Buildings_7079887413369540980.csv",
-                          "raw_data/properties_buildings/parcels.ttl",
+    create_triples(input_geojson="raw_data/Use_Zones/ZoningBoundaries_8799345250073700043.geojson",
+                   input_csv="raw_data/Use_Zones/ZoningBoundaries_6646520888006840889.csv",
+                   output_file="raw_data/Use_Zones/use_zones.ttl",
                           format="turtle")
     # For bulk load speed:
     # convert_geojson("input.geojson", "output.nt", format="nt")
