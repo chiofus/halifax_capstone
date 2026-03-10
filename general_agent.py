@@ -7,10 +7,12 @@ from query_tools.conversions import add_approx_loc_to_sparql_return, convert_def
 from polars import DataFrame
 from openai import OpenAI
 from pprint import pformat
+from visualizer.visualizer import map_polygons
+import webbrowser
 
 #GLOBAL OBJS
 ALL_QUERIES_REF = [
-    #Note that all queries have a 10 results limit for testing
+    #Note that all queries have a 100 results limit for testing
     {
         "id":
         "cq_1",
@@ -51,8 +53,8 @@ ALL_QUERIES_REF = [
             # Polygon
             ?locObj geo:asWKT ?pl .
         }
-        ORDER BY RAND()
-        LIMIT 10
+        # ORDER BY RAND()
+        # LIMIT 100
         
         """
     },
@@ -74,6 +76,26 @@ ALL_QUERIES_REF = [
                         hp:occupies ?property .
                 OPTIONAL { ?building hp:hasOwner ?owner . }
             }
+        }
+        """
+    },
+
+    {
+        'id': 'cq_3',
+        'original': 'What use is parcel x zoned for?',
+        'query': #Note that answering this question requires a lot more external processing, so this query simply retrieves all use_zone polygons
+        """
+        PREFIX cot: <http://ontology.eil.utoronto.ca/Halifax/Halifax-DT-Capstone#>
+        PREFIX hp: <http://ontology.eil.utoronto.ca/HPCDM/>
+        PREFIX loc: <https://standards.iso.org/iso-iec/5087/-1/ed-1/en/ontology/SpatialLoc/>
+        PREFIX geo: <http://www.opengis.net/ont/geosparql#>
+
+        SELECT ?polygon
+        WHERE {
+            ?zone a hp:UseZone ;
+                loc:hasLocation ?location .
+            
+            ?location geo:asWKT ?polygon .
         }
         """
     }
@@ -226,7 +248,23 @@ def process_query_response(query: dict[str, str], messages: list, model_name: st
     #Keep building, for now just checks q1
     query_id = query['id']
     if query_id in ['cq_1']: #checking if query id is cq_1
-        response = add_approx_loc_to_sparql_return(query_endpoint(query["query"])) #if cq1, need to add approx google map's loc
+        raw_query = query_endpoint(query["query"])
+        clean_query = add_approx_loc_to_sparql_return(raw_query) #if cq1, need to add approx loc (centroid)
+        map_file = map_polygons([r['pl'] for r in raw_query["results"]["bindings"]], 'test') #note that ['results']['bindings'] will access the actual query results, ['pl'] access the polygon obj of each returned row
+        webbrowser.open_new_tab(f"file://{os.path.abspath(map_file)}") #opening map for user
+
+        #Adding extra context for agent
+        messages.append({"role": CURR_STYLE, "content": 
+                         f"""
+                            You will find the query response in the next item.
+
+                            Note that the user has been displayed a map with all the empty parcels that we identified in the query,
+                            results for which you will find in the next item.
+
+                            Also note that the original response had {len(raw_query["results"]["bindings"])}, you are only being passed {len(clean_query)} entries.
+
+                            Please highlight the fact that user can now see the map with the empty parcels along with your summarization for your next response.
+                            """})
 
     elif query_id in ['cq_2']:
         #User should have provided some propery id object identifier, so make gpt find it:
@@ -310,7 +348,7 @@ def prompt_agent(
             messages.append({"role": CURR_STYLE,
                             "content": f"""
                                 Here is the system's output for the query: 
-                                {query_response}
+                                {query_response} 
 
                                 Can you please summarize the answer in some way and present it back to the user?
                             """
@@ -343,6 +381,8 @@ def query_endpoint(query: str, repo_id: str = "HALIFAX_DT", default_address: str
 
     return results
 
-initialize_agent_openai(model_name="gpt-5.4")
+if __name__ == "__main__":
+    initialize_agent_openai(model_name="gpt-5.4")
+    # process_query_response(ALL_QUERIES_REF[0], [], 'model_name', 'client')
 
-exit()
+    exit()
