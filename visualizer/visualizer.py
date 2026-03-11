@@ -15,7 +15,7 @@ def style_function(feature, color_map: dict):
         "fillOpacity": 0.6
     }
 
-def map_polygons(polygons: dict, filename: str, save_to: str = """visualizer/visualized""", pl_obj_name: str = 'pl') -> str: #returns loc where map was saved
+def map_polygons(polygons: dict, data: list[dict], headers: list[str], filename: str, save_to: str = """visualizer/visualized""", pl_obj_name: str = 'pl') -> str: #returns loc where map was saved
     #Note that this fn expects a clean polygons dict, already referenced to the polygon obj itself.
     
     #creating save location
@@ -28,10 +28,18 @@ def map_polygons(polygons: dict, filename: str, save_to: str = """visualizer/vis
     for r in polygons:
         geoms.append(wkt.loads(r['value'].split("^^")[0].strip('"')))
 
-    gdf = gpd.GeoDataFrame(geometry=geoms, crs="EPSG:4326")
+    gdf = gpd.GeoDataFrame(rows=data, geometry=geoms, crs="EPSG:4326")
 
     # Create map
     m = folium.Map(location=[44.70, -63.60], zoom_start=11)
+
+    #popups for parcels
+    popup_settings = folium.GeoJsonPopup(
+        fields=headers,
+        aliases=headers,
+        localize=True,
+        labels=True
+    )
 
     folium.GeoJson(
         gdf,

@@ -249,8 +249,9 @@ def process_query_response(query: dict[str, str], messages: list, model_name: st
     query_id = query['id']
     if query_id in ['cq_1']: #checking if query id is cq_1
         raw_query = query_endpoint(query["query"])
+        raw_data = [r for r in raw_query["results"]["bindings"]]
         clean_query = add_approx_loc_to_sparql_return(raw_query) #if cq1, need to add approx loc (centroid)
-        map_file = map_polygons([r['pl'] for r in raw_query["results"]["bindings"]], 'test') #note that ['results']['bindings'] will access the actual query results, ['pl'] access the polygon obj of each returned row
+        map_file = map_polygons([r['pl'] for r in raw_data], raw_data, 'test') #note that ['results']['bindings'] will access the actual query results, ['pl'] access the polygon obj of each returned row
         webbrowser.open_new_tab(f"file://{os.path.abspath(map_file)}") #opening map for user
 
         #Adding extra context for agent
