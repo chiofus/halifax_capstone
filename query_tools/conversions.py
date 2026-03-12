@@ -116,7 +116,7 @@ def sample_results(to_sample: list) -> list:
     
     return reduced #modified original obj
 
-def add_approx_loc_to_sparql_return(results: dict, as_link: bool = False, drop_polygon: bool = True) -> list:
+def add_approx_loc_to_sparql_return(results: dict, as_link: bool = False, drop_polygon: bool = True, reduce: bool = True) -> list:
     #adds a google maps approx loc, when a polygon object is present
 
     results_copy = deepcopy(results)
@@ -133,6 +133,6 @@ def add_approx_loc_to_sparql_return(results: dict, as_link: bool = False, drop_p
             except:
                 continue
 
-    simpler_results_reduced = sample_results([r for r in results_copy["results"]["bindings"]])
+    if reduce: results_copy = sample_results([r for r in results_copy["results"]["bindings"]])
 
-    return simpler_results_reduced
+    return results_copy

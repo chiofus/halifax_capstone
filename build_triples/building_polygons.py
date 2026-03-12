@@ -1,3 +1,5 @@
+#uses this source: https://data-hrm.hub.arcgis.com/datasets/HRM::buildings-1/about?layer=0
+
 import orjson
 from rdflib import Graph, Namespace, Literal, URIRef
 from rdflib.namespace import RDF, XSD
@@ -29,7 +31,7 @@ def fast_literal(value):
             return Literal(value)
     return Literal(str(value))
 
-def create_triples(input_geojson: str, input_csv:str, output_file: str, format="turtle"):
+def create_triples(input_geojson: str, output_file: str, input_csv:str = '', format: str ="turtle"):
     g = Graph()
     g.bind("hp", HP)
     g.bind("cot", COT)
@@ -41,10 +43,10 @@ def create_triples(input_geojson: str, input_csv:str, output_file: str, format="
     print("Loading .geojson data...")
     with open(input_geojson, "rb") as f: #loading geojson
         data = orjson.loads(f.read())
-    data_len = len(data["features"])
 
-    print("Loading .csv data...")
-    csv_data = pl.read_csv(input_csv) #loading csv data
+    if input_csv:
+        print("Loading .csv data...")
+        csv_data = pl.read_csv(input_csv) #loading csv data
 
     print("Creating triples...")
     for index, feature in enumerate(tqdm(data["features"])): #Building parcel triples
@@ -103,9 +105,9 @@ def create_triples(input_geojson: str, input_csv:str, output_file: str, format="
 
 
 if __name__ == "__main__":
-    create_triples("raw_data/properties_buildings/Buildings_1310805957371431331.geojson",
-                          "raw_data/properties_buildings/Buildings_7079887413369540980.csv",
-                          "raw_data/properties_buildings/parcels.ttl",
-                          format="turtle")
+    create_triples(input_geojson="raw_data/building_polygons.geojson",
+                          input_csv="raw_data/building_polygons.csv",
+                          output_file="triples/building_polygons.nt",
+                          format="nt")
     # For bulk load speed:
     # convert_geojson("input.geojson", "output.nt", format="nt")

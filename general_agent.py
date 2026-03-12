@@ -35,10 +35,10 @@ ALL_QUERIES_REF = [
             loc:hasLocation ?locObj .
 
             # Ensure no building occupies this parcel
-            FILTER NOT EXISTS {
-                ?b a hp:Building ;
-                hp:occupies ?p .
-            }
+            # FILTER NOT EXISTS {
+            #     ?b a hp:Building ;
+            #     hp:occupies ?p .
+            # }
 
             # Area
             ?areaObj i72:hasValue ?areaMeasure .
@@ -249,9 +249,16 @@ def process_query_response(query: dict[str, str], messages: list, model_name: st
     query_id = query['id']
     if query_id in ['cq_1']: #checking if query id is cq_1
         raw_query = query_endpoint(query["query"])
-        raw_data = [r for r in raw_query["results"]["bindings"]]
-        clean_query = add_approx_loc_to_sparql_return(raw_query) #if cq1, need to add approx loc (centroid)
-        map_file = map_polygons([r['pl'] for r in raw_data], raw_data, 'test') #note that ['results']['bindings'] will access the actual query results, ['pl'] access the polygon obj of each returned row
+        raw_with_google_maps = add_approx_loc_to_sparql_return(
+            raw_query,
+            as_link=True,
+            drop_polygon=False,
+            reduce=False
+        ) #adding google maps link
+        clean_raw_google_maps = [r for r in raw_with_google_maps["results"]["bindings"]]
+        
+        clean_query = add_approx_loc_to_sparql_return(raw_query) #need to add approx loc (centroid)
+        map_file = map_polygons([r['pl'] for r in clean_raw_google_maps], clean_raw_google_maps, 'all_parcels') #note that ['results']['bindings'] will access the actual query results, ['pl'] access the polygon obj of each returned row
         webbrowser.open_new_tab(f"file://{os.path.abspath(map_file)}") #opening map for user
 
         #Adding extra context for agent
@@ -383,7 +390,7 @@ def query_endpoint(query: str, repo_id: str = "HALIFAX_DT", default_address: str
     return results
 
 if __name__ == "__main__":
-    initialize_agent_openai(model_name="gpt-5.4")
-    # process_query_response(ALL_QUERIES_REF[0], [], 'model_name', 'client')
+    # initialize_agent_openai(model_name="gpt-5.4")
+    process_query_response(ALL_QUERIES_REF[0], [], 'model_name', 'client')
 
     exit()
