@@ -1,0 +1,129 @@
+@prefix cdt: <http://ontology.eil.utoronto.ca/CDT#> .
+@prefix code: <https://standards.iso.org/iso-iec/5087/-2/ed-1/en/ontology/Code/> .
+@prefix contact: <https://standards.iso.org/iso-iec/5087/-2/ed-1/en/ontology/Contact/> .
+@prefix cot: <http://ontology.eil.utoronto.ca/Halifax/Halifax-DT-Capstone#> .
+@prefix genprop: <https://standards.iso.org/iso-iec/5087/-1/ed-1/en/ontology/GenericProperties/> .
+@prefix geo: <http://www.opengis.net/ont/geosparql#> .
+@prefix halifax: <http://ontology.eil.utoronto.ca/Halifax/Halifax#> .
+@prefix i72: <http://ontology.eil.utoronto.ca/ISO21972/iso21972#> .
+@prefix loc: <https://standards.iso.org/iso-iec/5087/-1/ed-1/en/ontology/SpatialLoc/> .
+
+cot:CivicAddress114613 a contact:Address ;
+    loc:hasLocation cot:CivicAddressLoc114613 ;
+    code:hasCode cot:CivicAddressFCode114613,
+        cot:CivicAddressPIDCode114613 ;
+    contact:hasCity halifax:halifax ;
+    contact:hasCountry cdt:canada ;
+    contact:hasPostalCode "B2W 4N9" ;
+    contact:hasProvince cdt:novaScotia ;
+    contact:hasStreet "CLERMONT" ;
+    contact:hasStreetType "CRES" .
+
+cot:CivicAddress115502 a contact:Address ;
+    loc:hasLocation cot:CivicAddressLoc115502 ;
+    code:hasCode cot:CivicAddressFCode115502,
+        cot:CivicAddressPIDCode115502 ;
+    contact:hasCity halifax:halifax ;
+    contact:hasCountry cdt:canada ;
+    contact:hasPostalCode "B2Z 1R7" ;
+    contact:hasProvince cdt:novaScotia ;
+    contact:hasStreet "DAVID" ;
+    contact:hasStreetType "DR" .
+
+cot:CivicAddress131776 a contact:Address ;
+    loc:hasLocation cot:CivicAddressLoc131776 ;
+    code:hasCode cot:CivicAddressFCode131776,
+        cot:CivicAddressPIDCode131776 ;
+    contact:hasCity halifax:halifax ;
+    contact:hasCountry cdt:canada ;
+    contact:hasPostalCode "B4A 1Y2" ;
+    contact:hasProvince cdt:novaScotia ;
+    contact:hasStreet "RUTLEDGE" ;
+    contact:hasStreetType "ST" .
+
+cot:CivicAddress163929 a contact:Address ;
+    loc:hasLocation cot:CivicAddressLoc163929 ;
+    code:hasCode cot:CivicAddressFCode163929,
+        cot:CivicAddressPIDCode163929 ;
+    contact:hasCity halifax:halifax ;
+    contact:hasCountry cdt:canada ;
+    contact:hasProvince cdt:novaScotia ;
+    contact:hasStreet "ALDERBERRY" ;
+    contact:hasStreetType "LANE" .
+
+cot:CivicAddress79323 a contact:Address ;
+    loc:hasLocation cot:CivicAddressLoc79323 ;
+    code:hasCode cot:CivicAddressFCode79323,
+        cot:CivicAddressPIDCode79323 ;
+    contact:hasCity halifax:halifax ;
+    contact:hasCountry cdt:canada ;
+    contact:hasPostalCode "B3N 1T9" ;
+    contact:hasProvince cdt:novaScotia ;
+    contact:hasStreet "SHADY" ;
+    contact:hasStreetType "LANE" .
+
+cot:CivicAddress93324 a contact:Address ;
+    loc:hasLocation cot:CivicAddressLoc93324 ;
+    code:hasCode cot:CivicAddressFCode93324,
+        cot:CivicAddressPIDCode93324 ;
+    contact:hasCity halifax:halifax ;
+    contact:hasCountry cdt:canada ;
+    contact:hasPostalCode "B2T 1A2" ;
+    contact:hasProvince cdt:novaScotia ;
+    contact:hasStreet "KINGS" ;
+    contact:hasStreetType "RD" .
+
+cot:CivicAddressFCode114613 a code:Code ;
+    genprop:hasName "Valid civic number on building" .
+
+cot:CivicAddressFCode115502 a code:Code ;
+    genprop:hasName "Valid civic number on building" .
+
+cot:CivicAddressFCode131776 a code:Code ;
+    genprop:hasName "Valid civic number on building" .
+
+cot:CivicAddressFCode163929 a code:Code ;
+    genprop:hasName "Valid civic number on building" .
+
+cot:CivicAddressFCode79323 a code:Code ;
+    genprop:hasName "Valid civic number on building" .
+
+cot:CivicAddressFCode93324 a code:Code ;
+    genprop:hasName "Valid civic number on building" .
+
+cot:CivicAddressLoc114613 a loc:Location ;
+    geo:asWKT "POINT (-63.488864689696 44.676422730040)"^^geo:wktLiteral .
+
+cot:CivicAddressLoc115502 a loc:Location ;
+    geo:asWKT "POINT (-63.390074482144 44.672619980784)"^^geo:wktLiteral .
+
+cot:CivicAddressLoc131776 a loc:Location ;
+    geo:asWKT "POINT (-63.671279241319 44.731913087698)"^^geo:wktLiteral .
+
+cot:CivicAddressLoc163929 a loc:Location ;
+    geo:asWKT "POINT (-63.872811595089 44.696802777929)"^^geo:wktLiteral .
+
+cot:CivicAddressLoc79323 a loc:Location ;
+    geo:asWKT "POINT (-63.628970613545 44.636087748313)"^^geo:wktLiteral .
+
+cot:CivicAddressLoc93324 a loc:Location ;
+    geo:asWKT "POINT (-63.626335049028 44.884063510713)"^^geo:wktLiteral .
+
+cot:CivicAddressPIDCode114613 a code:Code ;
+    i72:hasValue "40204422" .
+
+cot:CivicAddressPIDCode115502 a code:Code ;
+    i72:hasValue "40493843" .
+
+cot:CivicAddressPIDCode131776 a code:Code ;
+    i72:hasValue "41186503" .
+
+cot:CivicAddressPIDCode163929 a code:Code ;
+    i72:hasValue "41185828" .
+
+cot:CivicAddressPIDCode79323 a code:Code ;
+    i72:hasValue "00301713" .
+
+cot:CivicAddressPIDCode93324 a code:Code ;
+    i72:hasValue "00569087" .
+

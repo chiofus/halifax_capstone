@@ -44,7 +44,7 @@ def quick_triple_add(graph: Graph, to_check: str, data_row: dict, subject, objec
     if data_row[to_check]:
         graph.add((subject, object, fast_literal(data_row[to_check])))
 
-def create_triples(input_geojson: str, output_file: str, input_csv:str = '', format: str ="turtle"):
+def create_triples(input_geojson: str, output_file: str, input_csv:str = '', format: str ="turtle", sample: bool = False):
     g = Graph()
     g.bind("hp", HP)
     g.bind("cot", COT)
@@ -67,6 +67,7 @@ def create_triples(input_geojson: str, output_file: str, input_csv:str = '', for
 
     print("Creating triples...")
     for index, feature in enumerate(tqdm(data["features"])): #Building parcel triples
+        if sample and index > 5: break #exit loop is just sampling
         curr_row: dict = feature["properties"]
         try:
             obj_id = curr_row.get("OBJECTID")
@@ -103,5 +104,6 @@ def create_triples(input_geojson: str, output_file: str, input_csv:str = '', for
 if __name__ == "__main__":
     create_triples(input_geojson="raw_data/bylaw_areas.geojson",
                         #   input_csv="raw_data/building_polygons.csv",
-                          output_file="triples/bylaw_areas.nt",
-                          format="nt")
+                          output_file="sample_triples/bylaw_areas.ttl",
+                          sample= True,
+                          format="ttl")

@@ -1,0 +1,158 @@
+@prefix CityUnits: <http://ontology.eil.utoronto.ca/5087/1/CityUnits/> .
+@prefix cot: <http://ontology.eil.utoronto.ca/Halifax/Halifax-DT-Capstone#> .
+@prefix geo: <http://www.opengis.net/ont/geosparql#> .
+@prefix hp: <http://ontology.eil.utoronto.ca/HPCDM/> .
+@prefix i72: <http://ontology.eil.utoronto.ca/ISO21972/iso21972#> .
+@prefix loc: <https://standards.iso.org/iso-iec/5087/-1/ed-1/en/ontology/SpatialLoc/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+cot:BuildingBL147730 a hp:Building ;
+    hp:occupies cot:Property342129 .
+
+cot:BuildingBL154940 a hp:Building ;
+    hp:occupies cot:Property342127 .
+
+cot:BuildingBL155532 a hp:Building ;
+    hp:occupies cot:Property342128 .
+
+cot:BuildingBL156297 a hp:Building ;
+    hp:occupies cot:Property342126 .
+
+cot:BuildingBL156703 a hp:Building ;
+    hp:occupies cot:Property342131 .
+
+cot:BuildingBL21880 a hp:Building ;
+    hp:occupies cot:Property342130 .
+
+cot:Property342126 a hp:Parcel ;
+    hp:hasArea cot:PropertyArea342126 ;
+    hp:hasPerimeter cot:PropertyPerimeter342126 ;
+    loc:hasLocation cot:PropertyLoc342126 .
+
+cot:Property342127 a hp:Parcel ;
+    hp:hasArea cot:PropertyArea342127 ;
+    hp:hasPerimeter cot:PropertyPerimeter342127 ;
+    loc:hasLocation cot:PropertyLoc342127 .
+
+cot:Property342128 a hp:Parcel ;
+    hp:hasArea cot:PropertyArea342128 ;
+    hp:hasPerimeter cot:PropertyPerimeter342128 ;
+    loc:hasLocation cot:PropertyLoc342128 .
+
+cot:Property342129 a hp:Parcel ;
+    hp:hasArea cot:PropertyArea342129 ;
+    hp:hasPerimeter cot:PropertyPerimeter342129 ;
+    loc:hasLocation cot:PropertyLoc342129 .
+
+cot:Property342130 a hp:Parcel ;
+    hp:hasArea cot:PropertyArea342130 ;
+    hp:hasPerimeter cot:PropertyPerimeter342130 ;
+    loc:hasLocation cot:PropertyLoc342130 .
+
+cot:Property342131 a hp:Parcel ;
+    hp:hasArea cot:PropertyArea342131 ;
+    hp:hasPerimeter cot:PropertyPerimeter342131 ;
+    loc:hasLocation cot:PropertyLoc342131 .
+
+cot:PropertyArea342126 a CityUnits:Area ;
+    i72:hasValue cot:PropertyAreaMeasure342126 .
+
+cot:PropertyArea342127 a CityUnits:Area ;
+    i72:hasValue cot:PropertyAreaMeasure342127 .
+
+cot:PropertyArea342128 a CityUnits:Area ;
+    i72:hasValue cot:PropertyAreaMeasure342128 .
+
+cot:PropertyArea342129 a CityUnits:Area ;
+    i72:hasValue cot:PropertyAreaMeasure342129 .
+
+cot:PropertyArea342130 a CityUnits:Area ;
+    i72:hasValue cot:PropertyAreaMeasure342130 .
+
+cot:PropertyArea342131 a CityUnits:Area ;
+    i72:hasValue cot:PropertyAreaMeasure342131 .
+
+cot:PropertyAreaMeasure342126 a i72:Measure ;
+    i72:hasNumericalValue 2.834766e+02 ;
+    i72:hasUnit i72:square_metre .
+
+cot:PropertyAreaMeasure342127 a i72:Measure ;
+    i72:hasNumericalValue 2.769688e+02 ;
+    i72:hasUnit i72:square_metre .
+
+cot:PropertyAreaMeasure342128 a i72:Measure ;
+    i72:hasNumericalValue 4.809375e+02 ;
+    i72:hasUnit i72:square_metre .
+
+cot:PropertyAreaMeasure342129 a i72:Measure ;
+    i72:hasNumericalValue 2.646836e+02 ;
+    i72:hasUnit i72:square_metre .
+
+cot:PropertyAreaMeasure342130 a i72:Measure ;
+    i72:hasNumericalValue 2.9675e+02 ;
+    i72:hasUnit i72:square_metre .
+
+cot:PropertyAreaMeasure342131 a i72:Measure ;
+    i72:hasNumericalValue 1.230234e+02 ;
+    i72:hasUnit i72:square_metre .
+
+cot:PropertyLoc342126 a loc:Location ;
+    geo:asWKT "POLYGON ((-63.288323856955 44.755135878553, -63.288215900616 44.755106544449, -63.288248872892 44.755044933932, -63.288238462722 44.755042104685, -63.288275993140 44.754971977613, -63.288330264441 44.754986724257, -63.288323438952 44.754999478055, -63.288388331497 44.755017109247, -63.288323856955 44.755135878553))"^^geo:wktLiteral .
+
+cot:PropertyLoc342127 a loc:Location ;
+    geo:asWKT "POLYGON ((-63.675866260107 44.695473668657, -63.675978835844 44.695520775450, -63.675892284892 44.695621594608, -63.675846381876 44.695601544113, -63.675844706328 44.695603497555, -63.675773659855 44.695572468638, -63.675817829013 44.695521017546, -63.675823489419 44.695523491915, -63.675866260107 44.695473668657))"^^geo:wktLiteral .
+
+cot:PropertyLoc342128 a loc:Location ;
+    geo:asWKT "POLYGON ((-63.373711664462 44.700250874081, -63.373820819343 44.700166961221, -63.373896332132 44.700216931455, -63.373836550993 44.700262885573, -63.373831153902 44.700259315272, -63.373812673884 44.700273519914, -63.373839108538 44.700291014099, -63.373787964680 44.700330326108, -63.373802440333 44.700339905935, -63.373765377706 44.700368396091, -63.373753712696 44.700360677215, -63.373724388177 44.700383219288, -63.373624772964 44.700317297764, -63.373667352574 44.700284569220, -63.373633599774 44.700262233882, -63.373677656299 44.700228367943, -63.373711664462 44.700250874081))"^^geo:wktLiteral .
+
+cot:PropertyLoc342129 a loc:Location ;
+    geo:asWKT "POLYGON ((-63.763299252677 44.522462942086, -63.763322185042 44.522537289358, -63.763309050521 44.522539362830, -63.763313146568 44.522552639906, -63.763300928443 44.522554568088, -63.763311175089 44.522587791871, -63.763207953009 44.522604087357, -63.763170678132 44.522483243689, -63.763299252677 44.522462942086))"^^geo:wktLiteral .
+
+cot:PropertyLoc342130 a loc:Location ;
+    geo:asWKT "POLYGON ((-63.619580592106 44.634960861807, -63.619578166792 44.634954543256, -63.619547797555 44.634962408938, -63.619518408108 44.634905482776, -63.619547517038 44.634897607385, -63.619536501112 44.634875922060, -63.619684564938 44.634836561729, -63.619687003864 44.634841980403, -63.619702195246 44.634837597608, -63.619725461560 44.634882776799, -63.619715338501 44.634885398707, -63.619726340890 44.634907983890, -63.619718738389 44.634910625227, -63.619724862931 44.634922372162, -63.619580592106 44.634960861807))"^^geo:wktLiteral .
+
+cot:PropertyLoc342131 a loc:Location ;
+    geo:asWKT "POLYGON ((-63.829262653027 44.657632134752, -63.829166317417 44.657648208585, -63.829143405687 44.657578728140, -63.829239739928 44.657562654318, -63.829262653027 44.657632134752))"^^geo:wktLiteral .
+
+cot:PropertyPerimeter342126 a CityUnits:Length ;
+    i72:hasValue cot:PropertyPerimeterMeasure342126 .
+
+cot:PropertyPerimeter342127 a CityUnits:Length ;
+    i72:hasValue cot:PropertyPerimeterMeasure342127 .
+
+cot:PropertyPerimeter342128 a CityUnits:Length ;
+    i72:hasValue cot:PropertyPerimeterMeasure342128 .
+
+cot:PropertyPerimeter342129 a CityUnits:Length ;
+    i72:hasValue cot:PropertyPerimeterMeasure342129 .
+
+cot:PropertyPerimeter342130 a CityUnits:Length ;
+    i72:hasValue cot:PropertyPerimeterMeasure342130 .
+
+cot:PropertyPerimeter342131 a CityUnits:Length ;
+    i72:hasValue cot:PropertyPerimeterMeasure342131 .
+
+cot:PropertyPerimeterMeasure342126 a i72:Measure ;
+    i72:hasNumericalValue 7.249635e+01 ;
+    i72:hasUnit i72:metre .
+
+cot:PropertyPerimeterMeasure342127 a i72:Measure ;
+    i72:hasNumericalValue 6.799489e+01 ;
+    i72:hasUnit i72:metre .
+
+cot:PropertyPerimeterMeasure342128 a i72:Measure ;
+    i72:hasNumericalValue 1.099666e+02 ;
+    i72:hasUnit i72:metre .
+
+cot:PropertyPerimeterMeasure342129 a i72:Measure ;
+    i72:hasNumericalValue 6.795719e+01 ;
+    i72:hasUnit i72:metre .
+
+cot:PropertyPerimeterMeasure342130 a i72:Measure ;
+    i72:hasNumericalValue 7.401276e+01 ;
+    i72:hasUnit i72:metre .
+
+cot:PropertyPerimeterMeasure342131 a i72:Measure ;
+    i72:hasNumericalValue 4.436733e+01 ;
+    i72:hasUnit i72:metre .
+

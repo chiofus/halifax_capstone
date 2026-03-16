@@ -35,7 +35,7 @@ def fast_literal(value):
             return Literal(value)
     return Literal(str(value))
 
-def create_triples(input_geojson: str, output_file: str, input_csv:str = '', format: str ="turtle"):
+def create_triples(input_geojson: str, output_file: str, input_csv:str = '', format: str ="turtle", sample: bool = False):
     g = Graph()
     g.bind("hp", HP)
     g.bind("cot", COT)
@@ -54,6 +54,7 @@ def create_triples(input_geojson: str, output_file: str, input_csv:str = '', for
 
     print("Creating triples...")
     for index, feature in enumerate(tqdm(data["features"])): #Building parcel triples
+        if sample and index > 5: break #exit loop is just sampling
         curr_row: dict = feature["properties"]
         try:
             use_id = curr_row.get("USE_ID") #reference building id directly
@@ -86,5 +87,6 @@ def create_triples(input_geojson: str, output_file: str, input_csv:str = '', for
 if __name__ == "__main__":
     create_triples(input_geojson="raw_data/building_uses.geojson",
                         #   input_csv="raw_data/building_polygons.csv",
-                          output_file="triples/building_uses.nt",
-                          format="nt")
+                          output_file="sample_triples/building_uses.ttl",
+                          sample= True,
+                          format="ttl")

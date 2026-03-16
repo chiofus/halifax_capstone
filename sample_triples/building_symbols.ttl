@@ -1,0 +1,92 @@
+@prefix bdg: <https://standards.iso.org/iso-iec/5087/-2/ed-1/en/ontology/Building/> .
+@prefix code: <https://standards.iso.org/iso-iec/5087/-2/ed-1/en/ontology/Code/> .
+@prefix cot: <http://ontology.eil.utoronto.ca/Halifax/Halifax-DT-Capstone#> .
+@prefix genprop: <https://standards.iso.org/iso-iec/5087/-1/ed-1/en/ontology/GenericProperties/> .
+@prefix geo: <http://www.opengis.net/ont/geosparql#> .
+@prefix hp: <http://ontology.eil.utoronto.ca/HPCDM/> .
+@prefix loc: <https://standards.iso.org/iso-iec/5087/-1/ed-1/en/ontology/SpatialLoc/> .
+
+cot:BuildingBL100 a hp:Building ;
+    bdg:use cot:BuildingUseSY50 .
+
+cot:BuildingBL432 a hp:Building ;
+    bdg:use cot:BuildingUseSY688 .
+
+cot:BuildingBL603 a hp:Building ;
+    bdg:use cot:BuildingUseSY339 .
+
+cot:BuildingBL702 a hp:Building ;
+    bdg:use cot:BuildingUseSY642 .
+
+cot:BuildingBL77843 a hp:Building ;
+    bdg:use cot:BuildingUseSY1047 .
+
+cot:BuildingBL78011 a hp:Building ;
+    bdg:use cot:BuildingUseSY938 .
+
+cot:BuildingUseCodeSY1047 a code:Code ;
+    genprop:hasName "Place of Worship" .
+
+cot:BuildingUseCodeSY339 a code:Code ;
+    genprop:hasName "Public School" .
+
+cot:BuildingUseCodeSY50 a code:Code ;
+    genprop:hasName "Recreation Facility" .
+
+cot:BuildingUseCodeSY642 a code:Code ;
+    genprop:hasName "Daycare" .
+
+cot:BuildingUseCodeSY688 a code:Code ;
+    genprop:hasName "Recreation Facility" .
+
+cot:BuildingUseCodeSY938 a code:Code ;
+    genprop:hasName "Place of Worship" .
+
+cot:BuildingUseLocSY1047 a loc:Location ;
+    geo:asWKT "POINT (-63.380871930168 44.739232484015)"^^geo:wktLiteral .
+
+cot:BuildingUseLocSY339 a loc:Location ;
+    geo:asWKT "POINT (-63.540992510787 44.645372848860)"^^geo:wktLiteral .
+
+cot:BuildingUseLocSY50 a loc:Location ;
+    geo:asWKT "POINT (-63.433927339943 44.719632098646)"^^geo:wktLiteral .
+
+cot:BuildingUseLocSY642 a loc:Location ;
+    geo:asWKT "POINT (-63.330581232105 44.740072798017)"^^geo:wktLiteral .
+
+cot:BuildingUseLocSY688 a loc:Location ;
+    geo:asWKT "POINT (-63.137927846367 45.051453546718)"^^geo:wktLiteral .
+
+cot:BuildingUseLocSY938 a loc:Location ;
+    geo:asWKT "POINT (-63.583885145006 44.581763164056)"^^geo:wktLiteral .
+
+cot:BuildingUseSY1047 a bdg:BuildingUse ;
+    genprop:hasName "St Anne's Catholic Church" ;
+    loc:hasLocation cot:BuildingUseLocSY1047 ;
+    code:hasCode cot:BuildingUseCodeSY1047 .
+
+cot:BuildingUseSY339 a bdg:BuildingUse ;
+    genprop:hasName "South Woodside Elementary School" ;
+    loc:hasLocation cot:BuildingUseLocSY339 ;
+    code:hasCode cot:BuildingUseCodeSY339 .
+
+cot:BuildingUseSY50 a bdg:BuildingUse ;
+    genprop:hasName "East Preston Recreation Centre" ;
+    loc:hasLocation cot:BuildingUseLocSY50 ;
+    code:hasCode cot:BuildingUseCodeSY50 .
+
+cot:BuildingUseSY642 a bdg:BuildingUse ;
+    genprop:hasName "Erica's Daycare Centre" ;
+    loc:hasLocation cot:BuildingUseLocSY642 ;
+    code:hasCode cot:BuildingUseCodeSY642 .
+
+cot:BuildingUseSY688 a bdg:BuildingUse ;
+    genprop:hasName "Musquodoboit Valley Recreation Office" ;
+    loc:hasLocation cot:BuildingUseLocSY688 ;
+    code:hasCode cot:BuildingUseCodeSY688 .
+
+cot:BuildingUseSY938 a bdg:BuildingUse ;
+    genprop:hasName "Victory Baptist Church" ;
+    loc:hasLocation cot:BuildingUseLocSY938 ;
+    code:hasCode cot:BuildingUseCodeSY938 .
+

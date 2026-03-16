@@ -1,0 +1,62 @@
+@prefix bdg: <https://standards.iso.org/iso-iec/5087/-2/ed-1/en/ontology/Building/> .
+@prefix code: <https://standards.iso.org/iso-iec/5087/-2/ed-1/en/ontology/Code/> .
+@prefix cot: <http://ontology.eil.utoronto.ca/Halifax/Halifax-DT-Capstone#> .
+@prefix genprop: <https://standards.iso.org/iso-iec/5087/-1/ed-1/en/ontology/GenericProperties/> .
+@prefix hp: <http://ontology.eil.utoronto.ca/HPCDM/> .
+@prefix time: <http://www.w3.org/2006/time#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+cot:BuildingBL147374 a hp:Building ;
+    hp:ownership "Private Person, Business, Organization or Agency" ;
+    bdg:use cot:BuildingUseDwellingSingleDetached ;
+    bdg:yearOfConstruction cot:Year1905 .
+
+cot:BuildingBL147418 a hp:Building ;
+    hp:ownership "Private Person, Business, Organization or Agency" ;
+    bdg:use cot:BuildingUseDwellingSingleDetached ;
+    bdg:yearOfConstruction cot:Year2008 .
+
+cot:BuildingBL148647 a hp:Building ;
+    hp:ownership "Private Person, Business, Organization or Agency" ;
+    bdg:use cot:BuildingUseDwellingSingleDetached ;
+    bdg:yearOfConstruction cot:Year1991 .
+
+cot:BuildingBL148667 a hp:Building ;
+    hp:ownership "Private Person, Business, Organization or Agency" ;
+    bdg:use cot:BuildingUseDwellingSingleDetached ;
+    bdg:yearOfConstruction cot:Year2016 .
+
+cot:BuildingBL148695 a hp:Building ;
+    hp:ownership "Private Person, Business, Organization or Agency" ;
+    bdg:use cot:BuildingUseDwellingSingleDetached ;
+    bdg:yearOfConstruction cot:Year2019 .
+
+cot:BuildingBL149470 a hp:Building ;
+    hp:ownership "Private Person, Business, Organization or Agency" ;
+    bdg:use cot:BuildingUseDwellingSingleDetached ;
+    bdg:yearOfConstruction cot:Year2015 .
+
+cot:BuildingUseCodeDwellingSingleDetached a code:Code ;
+    genprop:hasName "Dwelling ‐ Single Detached" .
+
+cot:Year1905 a time:DateTimeDescription ;
+    time:year "1905"^^xsd:gYear .
+
+cot:Year1991 a time:DateTimeDescription ;
+    time:year "1991"^^xsd:gYear .
+
+cot:Year2008 a time:DateTimeDescription ;
+    time:year "2008"^^xsd:gYear .
+
+cot:Year2015 a time:DateTimeDescription ;
+    time:year "2015"^^xsd:gYear .
+
+cot:Year2016 a time:DateTimeDescription ;
+    time:year "2016"^^xsd:gYear .
+
+cot:Year2019 a time:DateTimeDescription ;
+    time:year "2019"^^xsd:gYear .
+
+cot:BuildingUseDwellingSingleDetached a bdg:BuildingUse ;
+    code:hasCode cot:BuildingUseCodeDwellingSingleDetached .
+

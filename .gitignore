@@ -9,3 +9,4 @@
 *pycache*
 *html*
 /triples/
+!/sample_triples/**

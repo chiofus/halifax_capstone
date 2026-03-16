@@ -1,0 +1,60 @@
+@prefix bdg: <https://standards.iso.org/iso-iec/5087/-2/ed-1/en/ontology/Building/> .
+@prefix code: <https://standards.iso.org/iso-iec/5087/-2/ed-1/en/ontology/Code/> .
+@prefix cot: <http://ontology.eil.utoronto.ca/Halifax/Halifax-DT-Capstone#> .
+@prefix genprop: <https://standards.iso.org/iso-iec/5087/-1/ed-1/en/ontology/GenericProperties/> .
+@prefix hp: <http://ontology.eil.utoronto.ca/HPCDM/> .
+
+cot:BuildingBL68602 a hp:Building ;
+    bdg:use cot:BuildingUseBU68515 .
+
+cot:BuildingBL68604 a hp:Building ;
+    bdg:use cot:BuildingUseBU68517 .
+
+cot:BuildingBL68606 a hp:Building ;
+    bdg:use cot:BuildingUseBU68519 .
+
+cot:BuildingBL68607 a hp:Building ;
+    bdg:use cot:BuildingUseBU68520 .
+
+cot:BuildingBL68608 a hp:Building ;
+    bdg:use cot:BuildingUseBU68521 .
+
+cot:BuildingBL68609 a hp:Building ;
+    bdg:use cot:BuildingUseBU68522 .
+
+cot:BuildingUseBU68515 a bdg:BuildingUse ;
+    code:hasCode cot:BuildingUseCodeBU68515 .
+
+cot:BuildingUseBU68517 a bdg:BuildingUse ;
+    code:hasCode cot:BuildingUseCodeBU68517 .
+
+cot:BuildingUseBU68519 a bdg:BuildingUse ;
+    code:hasCode cot:BuildingUseCodeBU68519 .
+
+cot:BuildingUseBU68520 a bdg:BuildingUse ;
+    code:hasCode cot:BuildingUseCodeBU68520 .
+
+cot:BuildingUseBU68521 a bdg:BuildingUse ;
+    code:hasCode cot:BuildingUseCodeBU68521 .
+
+cot:BuildingUseBU68522 a bdg:BuildingUse ;
+    code:hasCode cot:BuildingUseCodeBU68522 .
+
+cot:BuildingUseCodeBU68515 a code:Code ;
+    genprop:hasName "RESIDENTIAL" .
+
+cot:BuildingUseCodeBU68517 a code:Code ;
+    genprop:hasName "RESIDENTIAL" .
+
+cot:BuildingUseCodeBU68519 a code:Code ;
+    genprop:hasName "RESIDENTIAL" .
+
+cot:BuildingUseCodeBU68520 a code:Code ;
+    genprop:hasName "RESIDENTIAL" .
+
+cot:BuildingUseCodeBU68521 a code:Code ;
+    genprop:hasName "RESIDENTIAL" .
+
+cot:BuildingUseCodeBU68522 a code:Code ;
+    genprop:hasName "RESIDENTIAL" .
+
