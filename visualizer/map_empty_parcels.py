@@ -22,6 +22,7 @@ def get_empty_civic_addresses(json_dump_location: str = '') -> list:
     from shapely.geometry import Point, Polygon
     from tqdm import tqdm
     import json, pickle
+    from copy import deepcopy
 
     #Helper functions
     def into_geo_objects_list(to_iterate: list[str]) -> list:
@@ -106,7 +107,7 @@ def get_empty_civic_addresses(json_dump_location: str = '') -> list:
         #dumping out every 5k points checked
         int_counter += 1
         
-        if int_counter > 5000 or idx_point == len(civic_addresses_to_check)-1:
+        if int_counter > 5000 or idx_point == len(civic_addresses_to_check)-1: #dump out results every 5k iters
             int_counter = 0
 
             try:
@@ -116,9 +117,12 @@ def get_empty_civic_addresses(json_dump_location: str = '') -> list:
                         pickle.dump(empty_civic_addresses, pickel_file)
 
                     #remove non json serializable objects
-                    for item in empty_civic_addresses: item.pop('point', None)
+                    dummy_addresses: list[dict] = deepcopy(empty_civic_addresses) #save a dummy copy to remove objs from dicts & not affect the og addresses
+                    for item in dummy_addresses: item.pop('point', None)
                     with open(json_dump_location, 'w') as json_file:
-                        json.dump(empty_civic_addresses, json_file, indent=2)
+                        json.dump(dummy_addresses, json_file, indent=2)
+                    del dummy_addresses
+
             except Exception as e:
                 print(e)
 
