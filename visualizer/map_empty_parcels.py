@@ -91,6 +91,8 @@ def get_empty_civic_addresses(json_dump_location: str = '') -> list:
     polygons_to_check: list[Polygon]  = into_geo_objects_list([pol for pol in ALL_POLYGONS["pl"].to_list()])
     civic_addresses_to_check: list[Point] = into_geo_objects_list([point for point in ALL_CIVIC_ADDRESSES["pnt"].to_list()])
 
+    int_counter: int = 0
+
     for idx_point, point in enumerate(tqdm(civic_addresses_to_check)):
         contained: bool = False
         for idx_poly, curr_pol in enumerate(polygons_to_check):
@@ -100,16 +102,25 @@ def get_empty_civic_addresses(json_dump_location: str = '') -> list:
 
         if not contained:
             empty_civic_addresses.append({'point': point, 'point_str': point.wkt, 'df_index': idx_point})
+        
+        #dumping out every 5k points checked
+        int_counter += 1
+        
+        if int_counter > 5000 or idx_point == len(civic_addresses_to_check):
+            int_counter = 0
 
-    if json_dump_location:  #if a dump location is given, list is also dumped as json
-        #will first pickle it for later use
-        with open(json_dump_location.replace('.json', '.pickle'), 'wb') as pickel_file:
-            pickle.dump(empty_civic_addresses, pickel_file)
+            try:
+                if json_dump_location:  #if a dump location is given, list is also dumped as json
+                    #will first pickle it for later use
+                    with open(json_dump_location.replace('.json', '.pickle'), 'wb') as pickel_file:
+                        pickle.dump(empty_civic_addresses, pickel_file)
 
-        #remove non json serializable objects
-        for item in empty_civic_addresses: item.pop('point', None)
-        with open(json_dump_location, 'w') as json_file:
-            json.dump(empty_civic_addresses, json_file, indent=2)
+                    #remove non json serializable objects
+                    for item in empty_civic_addresses: item.pop('point', None)
+                    with open(json_dump_location, 'w') as json_file:
+                        json.dump(empty_civic_addresses, json_file, indent=2)
+            except Exception as e:
+                print(e)
 
     return empty_civic_addresses
 
