@@ -5,8 +5,9 @@
 *example*
 *raw_data*
 *.ttl*
-*data*
+*raw_data*
 *pycache*
 *html*
 /triples/
 !/sample_triples/**
+*test.py*

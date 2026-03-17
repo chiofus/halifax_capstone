@@ -7,7 +7,7 @@ from query_tools.conversions import add_approx_loc_to_sparql_return, convert_def
 from polars import DataFrame
 from openai import OpenAI
 from pprint import pformat
-from visualizer.visualizer import map_polygons
+from visualizer.map_empty_parcels import map_polygons
 import webbrowser
 
 #GLOBAL OBJS
@@ -376,18 +376,6 @@ def prompt_agent(
         messages.append({"role": "assistant", "content": response})
 
         print("\n" + response + "\n")
-
-def query_endpoint(query: str, repo_id: str = "HALIFAX_DT", default_address: str = "http://localhost:7200/repositories/"):
-    repo_address = default_address + repo_id
-
-    sparql = SPARQLWrapper(repo_address)
-
-    #querying
-    sparql.setQuery(query)
-    sparql.setReturnFormat(JSON)
-    results = sparql.query().convert()
-
-    return results
 
 if __name__ == "__main__":
     # initialize_agent_openai(model_name="gpt-5.4")
