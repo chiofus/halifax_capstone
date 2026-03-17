@@ -1,10 +1,4 @@
-
-# from rdflib import Graph
-# import geopandas as gpd
-# from shapely import wkt
-# import folium
-# import pandas as pd
-# import os
+from shapely.geometry import Point
 
 def style_function(feature, color_map: dict):
     zone_type = feature["properties"]["type"]
@@ -20,11 +14,6 @@ def get_empty_civic_addresses(json_dump_location: str = '') -> list:
     from query_tools.general_query import query_endpoint, convert_default_sparql_to_df
     import polars as pl
     from shapely.geometry import Point, Polygon
-    from tqdm import tqdm
-    import json, pickle
-    from copy import deepcopy
-    from itertools import repeat
-    from concurrent.futures import ProcessPoolExecutor
 
     #Helper functions
     def into_geo_objects_list(to_iterate: list[str]) -> list:
@@ -35,59 +24,63 @@ def get_empty_civic_addresses(json_dump_location: str = '') -> list:
 
         #Transforming and returning
         return [wkt.loads(wkt_str) for wkt_str in clean_data]
-
-    def find_empty_addresses(
+    
+    def find_empty_addresses_strtree(
             civic_addresses_to_check: list[Point],
             polygons_to_check: list[Polygon],
             json_dump_location: str = ''
-            ) -> list[dict]: #into function to parallelize
-        
+        ) -> list[dict]:
+    
         #Imports
-        from os import makedirs, getpid
+        from shapely.strtree import STRtree
+        from os import makedirs
+        from tqdm import tqdm
+        import pickle, json
+        from copy import deepcopy
 
+        #Spatial index and globals
+        tree = STRtree(polygons_to_check)
         empty_civic_addresses: list[dict] = []
         
-        #Globals for loop run
-        int_counter: int = 0
-        if json_dump_location: json_dump_location = json_dump_location.replace('.json', f'_{getpid()}.json') #add process id to dump files
-
-        #Initialize save dir if given
-        if json_dump_location: makedirs(
-            '/'.join(json_dump_location.split('/')[:-1]), exist_ok=True
-        )
-        
         #Main loop
+        print("Getting all empty civic addresses...")
         for idx_point, point in enumerate(tqdm(civic_addresses_to_check)):
-            contained: bool = False
-            for idx_poly, curr_pol in enumerate(polygons_to_check):
-                if curr_pol.contains(point):
-                    contained = True
-                    break #break out of inner loop, no need to check checking if address is contained
+            #Quickly find candidate polys and check length of matches
+            intersecting_polys = tree.query(point)
 
-            if not contained:
-                empty_civic_addresses.append({'point': point, 'point_str': point.wkt, 'df_index': idx_point})
-            
-            #dumping out every 5k points checked
-            int_counter += 1
-            
-            if int_counter > int(len(civic_addresses_to_check)*0.05) or idx_point == len(civic_addresses_to_check)-1: #dump out results every 5k iters
-                int_counter = 0
+            if len(intersecting_polys) == 0:
+                empty_civic_addresses.append(
+                    {
+                        'point': point,
+                        'point_str': point.wkt,
+                        'df_index': idx_point
+                    }
+                )
 
-                try:
-                    if json_dump_location:  #if a dump location is given, list is also dumped as json
-                        #will first pickle it for later use
-                        with open(json_dump_location.replace('.json', '.pickle'), 'wb') as pickel_file:
-                            pickle.dump(empty_civic_addresses, pickel_file)
+        #Dumping into .json
+        try:
+            if json_dump_location:  #if a dump location is given, list is also dumped as json
+                #will first pickle it for later use
 
-                        #remove non json serializable objects
-                        dummy_addresses: list[dict] = deepcopy(empty_civic_addresses) #save a dummy copy to remove objs from dicts & not affect the og addresses
-                        for item in dummy_addresses: item.pop('point', None)
-                        with open(json_dump_location, 'w') as json_file:
-                            json.dump(dummy_addresses, json_file, indent=2)
-                        del dummy_addresses
+                #Make sure dir exists
+                makedirs(
+                    '/'.join(json_dump_location.split('/')[:-1]), exist_ok=True
+                )
 
-                except Exception as e:
-                    print(e)
+                with open(json_dump_location.replace('.json', '.pickle'), 'wb') as pickel_file:
+                    pickle.dump(empty_civic_addresses, pickel_file)
+
+                #remove non json serializable objects
+                dummy_addresses: list[dict] = deepcopy(empty_civic_addresses) #save a dummy copy to remove objs from dicts & not affect the og addresses
+                for item in dummy_addresses: item.pop('point', None)
+                with open(json_dump_location, 'w') as json_file:
+                    json.dump(dummy_addresses, json_file, indent=2)
+                del dummy_addresses
+
+        except Exception as e:
+            print(e)
+        
+        return empty_civic_addresses
     
     #General
     PARCEL_POLYGONS_QUERY: str = """
@@ -147,17 +140,11 @@ def get_empty_civic_addresses(json_dump_location: str = '') -> list:
     polygons_to_check: list[Polygon]  = into_geo_objects_list([pol for pol in ALL_POLYGONS["pl"].to_list()])
     civic_addresses_to_check: list[Point] = into_geo_objects_list([point for point in ALL_CIVIC_ADDRESSES["pnt"].to_list()])
 
-    with ProcessPoolExecutor() as executor:
-        empty_civic_addresses = list(executor.map(
-            find_empty_addresses,
-            civic_addresses_to_check,
-            repeat(polygons_to_check),
-            repeat(json_dump_location)
-            ))
+    empty_civic_addresses = find_empty_addresses_strtree(civic_addresses_to_check, polygons_to_check, json_dump_location)
 
     return empty_civic_addresses
 
-def map_polygons(polygons: dict, rows: list[dict], filename: str, save_to: str = """visualizer/visualized""", pl_obj_name: str = 'pl') -> str: #returns loc where map was saved
+def map_geometries(polygons: dict, rows: list[dict], filename: str, save_to: str = """visualizer/visualized""", pl_obj_name: str = 'pl') -> str: #returns loc where map was saved
     #Note that this fn expects a clean polygons dict, already referenced to the polygon obj itself.
     
     #creating save location
@@ -237,3 +224,33 @@ def map_polygons(polygons: dict, rows: list[dict], filename: str, save_to: str =
     # ).add_to(m)
 
     # **\
+
+def map_empty_civ_addresses() -> int: #returns number of empty addresses mapped
+    import plotly.express as px
+
+    #Get points to map
+    points: list[Point] = [item['point'] for item in get_empty_civic_addresses()]
+
+    #Basic point info
+    lats = [pt.y for pt in points]
+    lons = [pt.x for pt in points]
+
+    #Creating map
+    fig = px.scatter_map(
+        lat=lats,
+        lon=lons,
+        zoom=10,
+        height= 900,
+        map_style="satellite-streets"
+    )
+
+    fig.update_traces(
+        marker=dict(
+            size=9,
+            opacity=0.9
+        )
+    )
+
+    fig.show()
+
+    return len(points)
