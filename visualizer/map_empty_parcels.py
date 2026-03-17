@@ -23,6 +23,8 @@ def get_empty_civic_addresses(json_dump_location: str = '') -> list:
     from tqdm import tqdm
     import json, pickle
     from copy import deepcopy
+    from itertools import repeat
+    from concurrent.futures import ProcessPoolExecutor
 
     #Helper functions
     def into_geo_objects_list(to_iterate: list[str]) -> list:
@@ -34,6 +36,59 @@ def get_empty_civic_addresses(json_dump_location: str = '') -> list:
         #Transforming and returning
         return [wkt.loads(wkt_str) for wkt_str in clean_data]
 
+    def find_empty_addresses(
+            civic_addresses_to_check: list[Point],
+            polygons_to_check: list[Polygon],
+            json_dump_location: str = ''
+            ) -> list[dict]: #into function to parallelize
+        
+        #Imports
+        from os import makedirs, getpid
+
+        empty_civic_addresses: list[dict] = []
+        
+        #Globals for loop run
+        int_counter: int = 0
+        if json_dump_location: json_dump_location = json_dump_location.replace('.json', f'_{getpid()}.json') #add process id to dump files
+
+        #Initialize save dir if given
+        if json_dump_location: makedirs(
+            '/'.join(json_dump_location.split('/')[:-1]), exist_ok=True
+        )
+        
+        #Main loop
+        for idx_point, point in enumerate(tqdm(civic_addresses_to_check)):
+            contained: bool = False
+            for idx_poly, curr_pol in enumerate(polygons_to_check):
+                if curr_pol.contains(point):
+                    contained = True
+                    break #break out of inner loop, no need to check checking if address is contained
+
+            if not contained:
+                empty_civic_addresses.append({'point': point, 'point_str': point.wkt, 'df_index': idx_point})
+            
+            #dumping out every 5k points checked
+            int_counter += 1
+            
+            if int_counter > int(len(civic_addresses_to_check)*0.05) or idx_point == len(civic_addresses_to_check)-1: #dump out results every 5k iters
+                int_counter = 0
+
+                try:
+                    if json_dump_location:  #if a dump location is given, list is also dumped as json
+                        #will first pickle it for later use
+                        with open(json_dump_location.replace('.json', '.pickle'), 'wb') as pickel_file:
+                            pickle.dump(empty_civic_addresses, pickel_file)
+
+                        #remove non json serializable objects
+                        dummy_addresses: list[dict] = deepcopy(empty_civic_addresses) #save a dummy copy to remove objs from dicts & not affect the og addresses
+                        for item in dummy_addresses: item.pop('point', None)
+                        with open(json_dump_location, 'w') as json_file:
+                            json.dump(dummy_addresses, json_file, indent=2)
+                        del dummy_addresses
+
+                except Exception as e:
+                    print(e)
+    
     #General
     PARCEL_POLYGONS_QUERY: str = """
         PREFIX hp:  <http://ontology.eil.utoronto.ca/HPCDM/>
@@ -92,39 +147,13 @@ def get_empty_civic_addresses(json_dump_location: str = '') -> list:
     polygons_to_check: list[Polygon]  = into_geo_objects_list([pol for pol in ALL_POLYGONS["pl"].to_list()])
     civic_addresses_to_check: list[Point] = into_geo_objects_list([point for point in ALL_CIVIC_ADDRESSES["pnt"].to_list()])
 
-    int_counter: int = 0
-
-    for idx_point, point in enumerate(tqdm(civic_addresses_to_check)):
-        contained: bool = False
-        for idx_poly, curr_pol in enumerate(polygons_to_check):
-            if curr_pol.contains(point):
-                contained = True
-                break #break out of inner loop, no need to check checking if address is contained
-
-        if not contained:
-            empty_civic_addresses.append({'point': point, 'point_str': point.wkt, 'df_index': idx_point})
-        
-        #dumping out every 5k points checked
-        int_counter += 1
-        
-        if int_counter > 5000 or idx_point == len(civic_addresses_to_check)-1: #dump out results every 5k iters
-            int_counter = 0
-
-            try:
-                if json_dump_location:  #if a dump location is given, list is also dumped as json
-                    #will first pickle it for later use
-                    with open(json_dump_location.replace('.json', '.pickle'), 'wb') as pickel_file:
-                        pickle.dump(empty_civic_addresses, pickel_file)
-
-                    #remove non json serializable objects
-                    dummy_addresses: list[dict] = deepcopy(empty_civic_addresses) #save a dummy copy to remove objs from dicts & not affect the og addresses
-                    for item in dummy_addresses: item.pop('point', None)
-                    with open(json_dump_location, 'w') as json_file:
-                        json.dump(dummy_addresses, json_file, indent=2)
-                    del dummy_addresses
-
-            except Exception as e:
-                print(e)
+    with ProcessPoolExecutor() as executor:
+        empty_civic_addresses = list(executor.map(
+            find_empty_addresses,
+            civic_addresses_to_check,
+            repeat(polygons_to_check),
+            repeat(json_dump_location)
+            ))
 
     return empty_civic_addresses
 
