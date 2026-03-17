@@ -2,12 +2,8 @@
 from openai import OpenAI
 from typing import Tuple
 
-#Global vars
-CURR_STYLE = "developer" #determines which role convention to use (developer for openai, system for groq)
-
 #Agent logic
-
-def initialize_agent(model_name: str):
+def initialize_agent(model_name: str, skip_intro: bool = True):
     client = OpenAI()
 
     prompt_agent(client, model_name)
@@ -22,7 +18,7 @@ def prompt_agent(
     """
 
     #Imports
-    from objects.objects import ALL_QUERIES_REF
+    from objects.objects import ALL_QUERIES_REF, CURR_STYLE
 
     messages = generate_agent_intro(client, model_name)
 
@@ -67,6 +63,9 @@ def generate_agent_intro(
         client: OpenAI,
         model_name: str
 ) -> list:
+    #Imports
+    from objects.objects import CURR_STYLE
+
     print("Generating agent introduction...\n")
 
     #1. Initial messages, and agent intro
@@ -114,7 +113,7 @@ def generate_agent_intro(
 def evaluate_potential_cq(messages: list[dict], client: OpenAI, model_name: str) -> Tuple[list[dict], bool]:
     #Imports
     from pprint import pformat
-    from objects.objects import ALL_QUERIES_REF
+    from objects.objects import ALL_QUERIES_REF, CURR_STYLE
 
     #Decides if the user is asking a CQ question, so that a query can be ran for it.
 
@@ -160,6 +159,7 @@ def process_query_response(query: dict[str, str], messages: list, model_name: st
     if query_id in ['cq_1']: #checking if query id is cq_1
         #map display import
         from visualizer.map_empty_parcels import map_empty_civ_addresses
+        from objects.objects import CURR_STYLE
 
         n_empty_addresses: int = map_empty_civ_addresses()
 

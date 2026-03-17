@@ -1,5 +1,7 @@
 #Global objects
 
+CURR_STYLE = "developer" #determines which role convention to use (developer for openai, system for groq)
+
 ALL_QUERIES_REF = [
     #Note that all queries have a 100 results limit for testing
     {
