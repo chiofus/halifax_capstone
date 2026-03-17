@@ -106,7 +106,7 @@ def get_empty_civic_addresses(json_dump_location: str = '') -> list:
         #dumping out every 5k points checked
         int_counter += 1
         
-        if int_counter > 5000 or idx_point == len(civic_addresses_to_check):
+        if int_counter > 5000 or idx_point == len(civic_addresses_to_check)-1:
             int_counter = 0
 
             try:
