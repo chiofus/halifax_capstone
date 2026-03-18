@@ -750,7 +750,11 @@ def _run_llm_chain(question: str, index: HPCDMIndex, messages: list[dir]) -> tup
         chain = OntotextGraphDBQAChain.from_llm(
             llm, graph=graph, allow_dangerous_requests=True,
         )
-        return chain.invoke(question)["result"], messages
+
+        #Adding to messages
+        answer = chain.invoke(question)["result"]
+
+        return , messages
     finally:
         try:
             os.unlink(schema_path)
@@ -761,7 +765,7 @@ def _run_llm_chain(question: str, index: HPCDMIndex, messages: list[dir]) -> tup
 # MAIN ENTRY POINT
 # =====================================================================
 
-def run_cq(question: str, index: HPCDMIndex, messages: list[dict]) -> tuple[str, str, list[dict]]:
+def run_cq(question: str, index: HPCDMIndex, messages: list[dict]) -> tuple[str, list[dict]]:
     keywords = extract_keywords(question)
     category = _infer_category(keywords)
     parcel_id = _extract_parcel_id(question)
@@ -795,9 +799,7 @@ def run_cq(question: str, index: HPCDMIndex, messages: list[dict]) -> tuple[str,
             #Updates messages chain
             messages.append({
                 "role":     "assistant",
-                "content":     answer,
-                "category": category,
-                "method":   method,
+                "content":     answer
             })
 
         else:
@@ -807,7 +809,7 @@ def run_cq(question: str, index: HPCDMIndex, messages: list[dict]) -> tuple[str,
         messages = _run_llm_chain(question, index, messages)
         print(f"  [LLM chain fallback]")
 
-    return messages, category
+    return category, messages
 
 
 def normalize(text: str) -> str:
