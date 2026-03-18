@@ -440,21 +440,20 @@ SELECT ?year WHERE {{
 # =====================================================================
 
 TEMPLATE_RULES: list[tuple[str, str]] = [
-    (r"\b(size|area|how (big|large)|square)\b",                          "area"),
-    (r"\bperimeter\b",                                                    "perimeter"),
-    (r"\b(year|built|construction|age)\b",                               "year_built"),
+    # Specific compound phrases FIRST — before single-word matches
+    (r"\bbylaw\s+area\b",                                                "bylaw_area"),
+    (r"\bzoning\s+boundary\b",                                           "zoning"),
+    (r"\bplanned\s+zon\w+\b",                                           "planned_zoning"),
+    (r"\b(zoned?\s+capacity|capacity\s+for\s+a\s+parcel)\b",        "zoned_capacity"),
+    (r"\bmixed.?use\b",                                                   "mixed_use"),
+    (r"\b(fsr|floor.?space|fsi)\b",                                      "fsr"),
+    (r"\bheight\b",                                                       "building_height"),
+    (r"\bsetback\b",                                                      "setback"),
     (r"\b(federal|government|public(ly)?(\s+own))\b",                   "public_ownership"),
     (r"\b(own|owner|ownership|purchase|available for)\b",               "ownership"),
-    (r"\bsetback\b",                                                      "setback"),
-    (r"\bheight\b",                                                       "building_height"),
-    (r"\b(fsr|floor.?space|fsi)\b",                                      "fsr"),
-    (r"\bmixed.?use\b",                                                   "mixed_use"),
-    (r"\b(zoned?\s+capacity|capacity\s+for\s+a\s+parcel)\b",        "zoned_capacity"),
-    (r"\bplanned\s+zon\w+\b",                                           "planned_zoning"),
-    # Bylaw area name — must come before general zoning
-    (r"\bbylaw\s+area\b",                                                "bylaw_area"),
-    # Zoning boundary allowed use
-    (r"\bzoning\s+boundary\b",                                           "zoning"),
+    (r"\b(year|built|construction|age)\b",                               "year_built"),
+    (r"\bperimeter\b",                                                    "perimeter"),
+    (r"\b(size|area|how (big|large)|square)\b",                          "area"),
     (r"\b(land\s+use|currently\s+(being\s+)?used\s+for|current\s+use|used\s+for)\b", "building_use"),
     (r"\b(zon\w+|designat\w+)\b",                                       "zoning"),
     (r"\b(occupied\s+by|any\s+building|is\s+there\s+a\s+building|building\s+on)\b", "has_building"),
@@ -471,11 +470,13 @@ TEMPLATE_RULES: list[tuple[str, str]] = [
 
 def _detect_template(question: str) -> str | None:
     q = question.lower()
-    # Check if this is a BL-number query (e.g. "building 68602")
-    if re.search(r'\bbuilding\s+\d{4,6}\b', q):
+    # BL-number query: "building XXX" — handle all BL ID lengths (2-6 digits)
+    if re.search(r'\bbuilding\s+\d{2,6}\b', q):
+        pid = _extract_parcel_id(question)
         if re.search(r'\b(used for|use|purpose)\b', q):
-            return "building_use_by_bl"
-        if re.search(r'\b(own|owner|ownership)\b', q):
+            # Short IDs (<=5 digits) are from building_symbols.ttl
+            return "symbol_use_by_bl" if pid and len(pid) <= 5 else "building_use_by_bl"
+        if re.search(r'\bown', q):   # matches owns/owner/ownership
             return "ownership_by_bl"
         if re.search(r'\b(year|built|construction|age)\b', q):
             return "year_built_by_bl"
@@ -516,10 +517,12 @@ def _extract_parcel_id(question: str) -> str | None:
 
 def _is_real_halifax_id(parcel_id: str) -> bool:
     """
-    Returns True if the parcel_id looks like a real Halifax ID (6+ digits).
-    Synthetic test IDs are 5 digits or fewer (e.g. 12345).
+    Returns True if the parcel_id is a real Halifax ID.
+    Real Halifax IDs: 6+ digit property numbers, any-length BL numbers,
+    bylaw area numbers, zoning boundary numbers, 8-digit PIDs.
+    Synthetic IDs: exactly 5-digit numbers (12345, 67890, 11111).
     """
-    return len(parcel_id) >= 6
+    return len(parcel_id) != 5
 
 
 # =====================================================================
@@ -571,8 +574,8 @@ def _run_direct_sparql(template_key: str, parcel_id: str) -> str | None:
         def _fmt(v):
             try:
                 f = float(v)
-                # If it's a whole number display as int, else 2dp
-                return str(int(round(f))) if f == round(f) else f"{f:.2f}"
+                # Round to nearest integer for all numeric values
+                return str(int(round(f)))
             except ValueError:
                 return v
         values = [_fmt(v) for v in raw_values]
@@ -768,7 +771,7 @@ def run_cq(question: str, index: HPCDMIndex) -> tuple[str, str]:
     template_key = _detect_template(question) if parcel_id else None
 
     # Templates that always use HALIFAX_TEMPLATES regardless of ID length
-    BL_TEMPLATES = {"building_use_by_bl", "ownership_by_bl", "year_built_by_bl", "symbol_use_by_bl", "bylaw_area", "zoning", "address_by_pid"}
+    BL_TEMPLATES = {"building_use_by_bl", "ownership_by_bl", "year_built_by_bl", "symbol_use_by_bl", "bylaw_area", "zoning", "address_by_pid", "has_building", "area", "perimeter"}
 
     if template_key and parcel_id:
         is_real = _is_real_halifax_id(parcel_id)
@@ -816,94 +819,162 @@ def evaluate(answer: str, expected: str) -> str:
 
 
 # =====================================================================
-# TEST SUITE  —  all questions use real Halifax data
+# TEST SUITE — all questions use real Halifax data
+#
+# Tab mapping rationale:
+#   Land Use & Zoning      — what exists on a parcel TODAY
+#                            (size, shape, current use, ownership, zoning designation)
+#   Development Feasibility — can this land be developed?
+#                            (parcel size suitability, location/address, building age,
+#                             ownership availability — using DIFFERENT IDs from tab 1)
+#   Development Desirability — is the neighbourhood attractive for new housing?
+#                            (nearby amenities, zoning capacity for density,
+#                             housing accelerator by-law areas)
 # =====================================================================
 
 test_questions = [
 
-    # ── Tab 1: Land Use & Zoning ─────────────────────────────────────
+    # ══════════════════════════════════════════════════════════════
+    # TAB 1: Land Use & Zoning
+    # Focus: current state of specific parcels and their zoning
+    # ══════════════════════════════════════════════════════════════
 
-    # CQ-1a: Parcel area  (building_polygons.ttl — Property342126 = 283 m²)
+    # CQ-1a: What is the size of this parcel? (Property342126 = 283 m²)
     {"question": "What is the area of property 342126?",
      "expected": "283", "tab": "Land Use & Zoning", "cq": "1a"},
 
-    # CQ-1a: Parcel area  (Property342128 = 481 m²)
-    {"question": "What is the area of property 342128?",
-     "expected": "481", "tab": "Land Use & Zoning", "cq": "1a-b"},
+    # CQ-1a: What is the size of this parcel? (Property342127 = 277 m²)
+    {"question": "What is the area of property 342127?",
+     "expected": "277", "tab": "Land Use & Zoning", "cq": "1a-b"},
 
-    # CQ-1b: Parcel perimeter  (Property342126 = 72 m)
-    {"question": "What is the perimeter of property 342126?",
-     "expected": "72", "tab": "Land Use & Zoning", "cq": "1b"},
+    # CQ-1b: What is the perimeter of this parcel? (Property342128 = 110 m)
+    {"question": "What is the perimeter of property 342128?",
+     "expected": "110", "tab": "Land Use & Zoning", "cq": "1b"},
 
-    # CQ-1b: Parcel perimeter  (Property342131 = 44 m)
-    {"question": "What is the perimeter of property 342131?",
-     "expected": "44", "tab": "Land Use & Zoning", "cq": "1b-b"},
-
-    # CQ-41: Is there a building on the parcel?  (Property342126 → BuildingBL156297)
+    # CQ-41: Is the parcel already occupied by a building? (Property342126 → BuildingBL156297)
     {"question": "Is there a building on property 342126?",
      "expected": "building", "tab": "Land Use & Zoning", "cq": "41"},
 
-    # CQ-41: Is there a building on the parcel?  (Property342128 → BuildingBL155532)
+    # CQ-41: Is the parcel already occupied by a building? (Property342128 → BuildingBL155532)
     {"question": "Is there a building on property 342128?",
      "expected": "building", "tab": "Land Use & Zoning", "cq": "41-b"},
 
-    # CQ-56: Current use of building  (building_uses.ttl — BL68602 = RESIDENTIAL)
+    # CQ-56: What is the current land use of this building? (BL68602 = RESIDENTIAL)
     {"question": "What is building 68602 used for?",
      "expected": "RESIDENTIAL", "tab": "Land Use & Zoning", "cq": "56"},
 
-    # CQ-56: Current use of building  (BL68609 = RESIDENTIAL)
-    {"question": "What is building 68609 used for?",
+    # CQ-56: What is the current land use of this building? (BL68607 = RESIDENTIAL)
+    {"question": "What is building 68607 used for?",
      "expected": "RESIDENTIAL", "tab": "Land Use & Zoning", "cq": "56-b"},
 
-    # CQ-56: Building use from symbols  (building_symbols.ttl — BL100 = Place of Worship)
-    {"question": "What is building 100 used for?",
-     "expected": "Place of Worship", "tab": "Land Use & Zoning", "cq": "56-sym"},
-
-    # CQ-56: Building use from symbols  (BL603 = Public School — via SY339)
-    {"question": "What is building 603 used for?",
-     "expected": "Public School", "tab": "Land Use & Zoning", "cq": "56-sym2"},
-
-    # CQ-2: Building ownership  (buildings.ttl — BL147374 = Private Person...)
-    {"question": "Who owns building 147374?",
+    # CQ-2: Who is the current owner of this building? (BL148695 = Private Person...)
+    {"question": "Who owns building 148695?",
      "expected": "Private", "tab": "Land Use & Zoning", "cq": "2"},
 
-    # CQ-2: Building ownership  (BL149470 = Private Person...)
-    {"question": "Who owns building 149470?",
-     "expected": "Private", "tab": "Land Use & Zoning", "cq": "2-b"},
+    # CQ-3: What zoning designation applies here? (ZoningBoundary1 = Mixed Rural Residential)
+    {"question": "What use does zoning boundary 1 allow?",
+     "expected": "Mixed Rural Residential", "tab": "Land Use & Zoning", "cq": "3"},
 
-    # CQ-41a: Year of construction  (buildings.ttl — BL148647 = 1991)
-    {"question": "What year was building 148647 built?",
-     "expected": "1991", "tab": "Land Use & Zoning", "cq": "41a"},
-
-    # CQ-41a: Year of construction  (BL148695 = 2019)
-    {"question": "What year was building 148695 built?",
-     "expected": "2019", "tab": "Land Use & Zoning", "cq": "41a-b"},
-
-    # CQ-3 / zoning boundary: What use does ZoningBoundary2 allow?
+    # CQ-3: What zoning designation applies here? (ZoningBoundary2 = Single Unit Dwelling)
     {"question": "What use does zoning boundary 2 allow?",
-     "expected": "Single Unit Dwelling", "tab": "Land Use & Zoning", "cq": "3"},
+     "expected": "Single Unit Dwelling", "tab": "Land Use & Zoning", "cq": "3-b"},
 
-    # CQ-3: ZoningBoundary6 = Mixed Use 1
-    {"question": "What use does zoning boundary 6 allow?",
-     "expected": "Mixed Use 1", "tab": "Land Use & Zoning", "cq": "3-b"},
+    # CQ-24b: Which by-law area does this parcel fall under? (BylawArea1 = Suburban Housing Accelerator)
+    {"question": "What is the name of bylaw area 1?",
+     "expected": "Suburban Housing Accelerator", "tab": "Land Use & Zoning", "cq": "24b"},
 
-    # CQ-24b / Bylaw area name  (bylaw_areas.ttl — BylawArea2 = Sackville Drive)
+    # CQ-24b: Which by-law area does this parcel fall under? (BylawArea2 = Sackville Drive)
     {"question": "What is the name of bylaw area 2?",
-     "expected": "Sackville Drive", "tab": "Land Use & Zoning", "cq": "24b"},
+     "expected": "Sackville Drive", "tab": "Land Use & Zoning", "cq": "24b-b"},
 
-    # CQ-24b: BylawArea3 = Bedford
-    {"question": "What is the name of bylaw area 3?",
-     "expected": "Bedford", "tab": "Land Use & Zoning", "cq": "24b-b"},
+    # CQ-3c: Open-ended zoning query — no numeric ID, routes to LLM chain
+    # LLM queries GraphDB for all ZoningBoundary instances and their allowed uses
+    {"question": "What zoning types are recorded in the Halifax dataset?",
+     "expected": "Single Unit Dwelling", "tab": "Land Use & Zoning", "cq": "3c"},
 
-    # ── Tab 2: Development Feasibility ──────────────────────────────
+    # ══════════════════════════════════════════════════════════════
+    # TAB 2: Development Feasibility
+    # Focus: whether a specific parcel is a viable development candidate
+    # ══════════════════════════════════════════════════════════════
 
-    # CQ-5: Civic address lookup by PID  (civic_addresses.ttl — PID 00301713 = SHADY LANE)
+    # CQ-1a: Is the parcel large enough for development? (Property342129 = 265 m²)
+    {"question": "What is the area of property 342129?",
+     "expected": "265", "tab": "Development Feasibility", "cq": "1a"},
+
+    # CQ-1a: Is the parcel large enough for development? (Property342131 = 123 m²)
+    {"question": "What is the area of property 342131?",
+     "expected": "123", "tab": "Development Feasibility", "cq": "1a-b"},
+
+    # CQ-1b: What is the frontage/perimeter of this development candidate? (Property342127 = 68 m)
+    {"question": "What is the perimeter of property 342127?",
+     "expected": "68", "tab": "Development Feasibility", "cq": "1b"},
+
+    # CQ-5: Where is this property located? (PID 00301713 = SHADY LANE)
     {"question": "What is the address for PID 00301713?",
      "expected": "SHADY", "tab": "Development Feasibility", "cq": "5"},
 
-    # CQ-5: PID 41186503 = RUTLEDGE ST
+    # CQ-5: Where is this property located? (PID 40493843 = DAVID DR)
+    {"question": "What is the address for PID 40493843?",
+     "expected": "DAVID", "tab": "Development Feasibility", "cq": "5-b"},
+
+    # CQ-5: Where is this property located? (PID 41186503 = RUTLEDGE ST)
     {"question": "What is the address for PID 41186503?",
-     "expected": "RUTLEDGE", "tab": "Development Feasibility", "cq": "5-b"},
+     "expected": "RUTLEDGE", "tab": "Development Feasibility", "cq": "5-c"},
+
+    # CQ-41a: How old is the existing building? (BL147374 = 1905, very old — redevelopment candidate)
+    {"question": "What year was building 147374 built?",
+     "expected": "1905", "tab": "Development Feasibility", "cq": "41a"},
+
+    # CQ-41a: How old is the existing building? (BL147418 = 2008, relatively recent)
+    {"question": "What year was building 147418 built?",
+     "expected": "2008", "tab": "Development Feasibility", "cq": "41a-b"},
+
+    # CQ-2: Is the building privately owned (i.e. available for purchase)? (BL149470 = Private)
+    {"question": "Who owns building 149470?",
+     "expected": "Private", "tab": "Development Feasibility", "cq": "2"},
+
+    # CQ-24c: Open-ended by-law area query — no numeric ID, routes to LLM chain
+    # LLM queries GraphDB for all BylawArea instances under Suburban Housing Accelerator
+    {"question": "Which bylaw areas in Halifax are Suburban Housing Accelerator zones?",
+     "expected": "Suburban Housing Accelerator", "tab": "Development Feasibility", "cq": "24c"},
+
+    # ══════════════════════════════════════════════════════════════
+    # TAB 3: Development Desirability
+    # Focus: neighbourhood amenities and zoning capacity for new housing
+    # ══════════════════════════════════════════════════════════════
+
+    # CQ-56: Are there schools nearby? (BL603 = Public School)
+    {"question": "What is building 603 used for?",
+     "expected": "Public School", "tab": "Development Desirability", "cq": "56"},
+
+    # CQ-56: Are there childcare facilities nearby? (BL702 = Daycare)
+    {"question": "What is building 702 used for?",
+     "expected": "Daycare", "tab": "Development Desirability", "cq": "56-b"},
+
+    # CQ-56: Are there recreational facilities nearby? (BL432 = Recreation Facility)
+    {"question": "What is building 432 used for?",
+     "expected": "Recreation Facility", "tab": "Development Desirability", "cq": "56-c"},
+
+    # CQ-3: Does the zoning allow multi-unit housing? (ZoningBoundary4 = Multiple Unit Dwelling)
+    {"question": "What use does zoning boundary 4 allow?",
+     "expected": "Multiple Unit Dwelling", "tab": "Development Desirability", "cq": "3"},
+
+    # CQ-3: Does the zoning allow mixed-use development? (ZoningBoundary6 = Mixed Use 1)
+    {"question": "What use does zoning boundary 6 allow?",
+     "expected": "Mixed Use 1", "tab": "Development Desirability", "cq": "3-b"},
+
+    # CQ-24b: Is this area covered by a housing accelerator by-law? (BylawArea3 = Bedford)
+    {"question": "What is the name of bylaw area 3?",
+     "expected": "Bedford", "tab": "Development Desirability", "cq": "24b"},
+
+    # CQ-24b: Is this area covered by a housing accelerator by-law? (BylawArea4 = Suburban Housing Accelerator)
+    {"question": "What is the name of bylaw area 4?",
+     "expected": "Suburban Housing Accelerator", "tab": "Development Desirability", "cq": "24b-b"},
+
+    # CQ-56d: Open-ended amenity query — no numeric ID, routes to LLM chain
+    # LLM queries GraphDB for all building symbol types (community facilities)
+    {"question": "What types of community facilities are present in the Halifax building dataset?",
+     "expected": "Daycare", "tab": "Development Desirability", "cq": "56d"},
 ]
 
 def main():
