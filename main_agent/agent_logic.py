@@ -13,7 +13,7 @@ def prompt_agent( #Use this function to connect w UI
         messages: list[dict],
         client: OpenAI = OpenAI(),
         model_name: str = "gpt-5.4"
-) -> list[dict]:
+) -> tuple[list[dict], bool]: #returns chain of messages and if it was able to get a valid CQ match or not (False for no match)
     #Imports
     from objects.objects import ALL_QUERIES_REF, CURR_STYLE
 
@@ -34,21 +34,14 @@ def prompt_agent( #Use this function to connect w UI
                             Can you please summarize the answer in some way and present it back to the user?
                         """
                         })
+        
+        #Answering CQ
+        response = generate_agent_response(client, model_name, messages)
+        messages.append({"role": "assistant", "content": response})
+
+        return messages, True
     
-    else:
-        #Implement logic for transitioning into generative response, for now simply keep conversation going
-        messages.append({
-            "role": CURR_STYLE,
-            "content": """
-                Since no specific competency question was asked, please simply continue as normal,
-                and generate some creative response for the last user prompt
-            """
-        })
-
-    response = generate_agent_response(client, model_name, messages)
-    messages.append({"role": "assistant", "content": response})
-
-    return messages
+    return messages, False
 
 def prompt_agent_continuous(
         client: OpenAI,

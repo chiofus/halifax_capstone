@@ -14,13 +14,13 @@ def add_venv_dir_to_modules(path_to_check: str = '') -> None:
     add_venv_dir_to_modules(p.parent.as_posix()) 
 
 add_venv_dir_to_modules() #adds venv dir to modules
-# sys.path.insert(0, os.path.dirname(__file__))
-# from main import run_cq, HPCDMIndex, HPCDM_FILE
 
 #IMPORTS
 import streamlit as st
 from main_agent.agent_logic import prompt_agent
 from objects.objects import INTERNAL_KEY
+from ui_main import run_cq, HPCDMIndex, HPCDM_FILE
+from ui_main import _extract_parcel_id, _detect_template, _run_direct_sparql, _format_answer, _infer_category, extract_keywords
 
 # ── page config ──────────────────────────────────────────────────────
 st.set_page_config(
@@ -34,6 +34,14 @@ st.markdown("""
 <style>
 /* hide default streamlit chrome */
 #MainMenu, footer, header { visibility: hidden; }
+
+/* prevent Send button text from wrapping */
+div[data-testid="column"]:last-child button {
+    white-space: nowrap;
+    min-width: 80px;
+    height: 38px;
+    padding: 0 16px;
+}
 
 /* chat bubbles */
 .user-bubble {
@@ -83,11 +91,11 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ── load ontology index once (cached across reruns) ──────────────────
-# @st.cache_resource(show_spinner="Loading ontology index…")
-# def load_index():
-#     return HPCDMIndex(HPCDM_FILE)
+@st.cache_resource(show_spinner="Loading ontology index…")
+def load_index():
+    return HPCDMIndex(HPCDM_FILE)
 
-# index = load_index()
+index = load_index()
 
 # ── session state ────────────────────────────────────────────────────
 if "messages" not in st.session_state:
@@ -147,7 +155,7 @@ for msg in st.session_state.messages:
 
 # ── input bar ─────────────────────────────────────────────────────────
 with st.form("chat_form", clear_on_submit=True):
-    col1, col2 = st.columns([9, 1])
+    col1, col2 = st.columns([8, 1])
     with col1:
         user_input = st.text_input(
             "question",
@@ -169,25 +177,14 @@ if question:
     # Save user message
     st.session_state.messages.append({"role": "user", "content": question})
 
-    #Forward message to main agent and get response
-    st.session_state.messages = prompt_agent(st.session_state.messages) #forward curr messages to agent, get response
-
     # Detect method for display tag
-    # from main import _extract_parcel_id, _detect_template, _run_direct_sparql, _format_answer, _infer_category, extract_keywords
+    with st.spinner("Querying GraphDB…"):
+        answer, category, st.session_state.messages = run_cq(question, index, st.session_state.messages) #now also updates all session messages
 
-    # with st.spinner("Querying GraphDB…"):
-    #     answer, category = run_cq(question, index)
-
-    # parcel_id    = _extract_parcel_id(question)
-    # template_key = _detect_template(question) if parcel_id else None
-    # method       = "direct" if template_key and parcel_id else "llm"
-
-    # st.session_state.messages.append({
-    #     "role":     "bot",
-    #     "content":     answer,
-    #     "category": category,
-    #     "method":   method,
-    # })
+    parcel_id    = _extract_parcel_id(question)
+    template_key = _detect_template(question) if parcel_id else None
+    method       = "direct" if template_key and parcel_id else "llm"
+    
     st.rerun()
 
 # ── clear button ──────────────────────────────────────────────────────

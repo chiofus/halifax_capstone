@@ -734,7 +734,11 @@ def extract_schema(index: HPCDMIndex, question: str) -> str:
 # LLM CHAIN FALLBACK
 # =====================================================================
 
-def _run_llm_chain(question: str, index: HPCDMIndex) -> str:
+def _run_llm_chain(question: str, index: HPCDMIndex, messages: list[dir]) -> tuple[str, list[dict]]:
+    #Will first try for hardcoded CQ lookup
+    from main_agent.agent_logic import prompt_agent
+    messages, answered_cq = prompt_agent(messages) #tries to obtain hardcoded cq response
+
     schema_path = extract_schema(index, question)
     try:
         graph = OntotextGraphDBGraph(
@@ -746,19 +750,18 @@ def _run_llm_chain(question: str, index: HPCDMIndex) -> str:
         chain = OntotextGraphDBQAChain.from_llm(
             llm, graph=graph, allow_dangerous_requests=True,
         )
-        return chain.invoke(question)["result"]
+        return chain.invoke(question)["result"], messages
     finally:
         try:
             os.unlink(schema_path)
         except OSError:
             pass
 
-
 # =====================================================================
 # MAIN ENTRY POINT
 # =====================================================================
 
-def run_cq(question: str, index: HPCDMIndex) -> tuple[str, str]:
+def run_cq(question: str, index: HPCDMIndex, messages: list[dict]) -> tuple[str, str, list[dict]]:
     keywords = extract_keywords(question)
     category = _infer_category(keywords)
     parcel_id = _extract_parcel_id(question)
@@ -788,14 +791,23 @@ def run_cq(question: str, index: HPCDMIndex) -> tuple[str, str]:
             answer = _format_answer(template_key, raw, parcel_id)
             src = "BL" if is_bl_query else ("real Halifax" if is_real else "synthetic")
             print(f"  [direct SPARQL: {template_key} | {src} data]")
+
+            #Updates messages chain
+            messages.append({
+                "role":     "assistant",
+                "content":     answer,
+                "category": category,
+                "method":   method,
+            })
+
         else:
-            answer = _run_llm_chain(question, index)
+            messages = _run_llm_chain(question, index, messages)
             print(f"  [LLM chain fallback — no template for '{template_key}' in {'Halifax' if is_real else 'synthetic'} set]")
     else:
-        answer = _run_llm_chain(question, index)
+        messages = _run_llm_chain(question, index, messages)
         print(f"  [LLM chain fallback]")
 
-    return answer, category
+    return messages, category
 
 
 def normalize(text: str) -> str:
