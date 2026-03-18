@@ -14,6 +14,7 @@ def get_empty_civic_addresses(json_dump_location: str = '') -> list:
     from query_tools.general_query import query_endpoint, convert_default_sparql_to_df
     import polars as pl
     from shapely.geometry import Point, Polygon
+    from objects.objects import PARCEL_POLYGONS_QUERY, CIVIC_ADDRESSES_POINTS_QUERY
 
     #Helper functions
     def into_geo_objects_list(to_iterate: list[str]) -> list:
@@ -81,47 +82,6 @@ def get_empty_civic_addresses(json_dump_location: str = '') -> list:
             print(e)
         
         return empty_civic_addresses
-    
-    #General
-    PARCEL_POLYGONS_QUERY: str = """
-        PREFIX hp:  <http://ontology.eil.utoronto.ca/HPCDM/>
-        PREFIX loc: <https://standards.iso.org/iso-iec/5087/-1/ed-1/en/ontology/SpatialLoc/>
-        PREFIX geo: <http://www.opengis.net/ont/geosparql#>
-
-        SELECT ?p ?pl
-        WHERE {
-            ?p a hp:Parcel ;
-            loc:hasLocation ?locObj .
-
-            # Ensure no building occupies this parcel #not running this for now, but check if it would help make queries faster / return the same results.
-            # FILTER NOT EXISTS {
-            #     ?b a hp:Building ;
-            #     hp:occupies ?p .
-            # }
-
-            # Polygon
-            ?locObj geo:asWKT ?pl .
-        }
-    """
-
-    CIVIC_ADDRESSES_POINTS_QUERY: str = """
-        PREFIX contact: <https://standards.iso.org/iso-iec/5087/-2/ed-1/en/ontology/Contact/>
-        PREFIX loc: <https://standards.iso.org/iso-iec/5087/-1/ed-1/en/ontology/SpatialLoc/>
-        PREFIX geo: <http://www.opengis.net/ont/geosparql#>
-        PREFIX code: <https://standards.iso.org/iso-iec/5087/-2/ed-1/en/ontology/Code/>
-        PREFIX genprop: <https://standards.iso.org/iso-iec/5087/-1/ed-1/en/ontology/GenericProperties/>
-
-        SELECT ?ad ?pnt ?codeName
-        WHERE {
-            ?ad a contact:Address ;
-                    loc:hasLocation ?loc ;
-                    code:hasCode ?code .
-
-            ?loc geo:asWKT ?pnt .
-
-            ?code genprop:hasName ?codeName .
-        }
-    """
     
     #Gets all empty civid addresses (civic address points that do not belong to any parcel polygon)
 
@@ -246,8 +206,9 @@ def map_empty_civ_addresses() -> int: #returns number of empty addresses mapped
 
     fig.update_traces(
         marker=dict(
-            size=9,
-            opacity=0.9
+            size=8,
+            opacity=0.7,
+            color = "indianred"
         )
     )
 

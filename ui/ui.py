@@ -1,5 +1,3 @@
-import streamlit as st
-
 # ── make sure main.py is importable from the same directory ──────────
 def add_venv_dir_to_modules(path_to_check: str = '') -> None:
     import os, sys
@@ -18,6 +16,11 @@ def add_venv_dir_to_modules(path_to_check: str = '') -> None:
 add_venv_dir_to_modules() #adds venv dir to modules
 # sys.path.insert(0, os.path.dirname(__file__))
 # from main import run_cq, HPCDMIndex, HPCDM_FILE
+
+#IMPORTS
+import streamlit as st
+from main_agent.agent_logic import prompt_agent
+from objects.objects import INTERNAL_KEY
 
 # ── page config ──────────────────────────────────────────────────────
 st.set_page_config(
@@ -119,13 +122,18 @@ if not st.session_state.messages:
 from objects.objects import CURR_STYLE
 
 for msg in st.session_state.messages:
-    if msg["role"] == CURR_STYLE: continue #skip dev messages
+    try:
+        if msg["role"] == CURR_STYLE: continue #skip dev messages
+
+        if INTERNAL_KEY in msg["content"]: continue #some msgs are internal and should not be displayed
+    except Exception as e:
+        pass
 
     if msg["role"] == "user":
-        st.markdown(f'<div class="user-bubble">{msg["text"]}</div>',
+        st.markdown(f'<div class="user-bubble">{msg["content"]}</div>',
                     unsafe_allow_html=True)
     else:
-        st.markdown(f'<div class="bot-bubble">{msg["text"]}</div>',
+        st.markdown(f'<div class="bot-bubble">{msg["content"]}</div>',
                     unsafe_allow_html=True)
         tag_class = "tag-sparql" if msg.get("method") == "direct" else "tag-llm"
         method_label = "direct SPARQL" if msg.get("method") == "direct" else "LLM chain"
@@ -159,7 +167,10 @@ elif hasattr(st.session_state, "pending_question"):
 
 if question:
     # Save user message
-    st.session_state.messages.append({"role": "user", "text": question})
+    st.session_state.messages.append({"role": "user", "content": question})
+
+    #Forward message to main agent and get response
+    st.session_state.messages = prompt_agent(st.session_state.messages) #forward curr messages to agent, get response
 
     # Detect method for display tag
     # from main import _extract_parcel_id, _detect_template, _run_direct_sparql, _format_answer, _infer_category, extract_keywords
@@ -173,7 +184,7 @@ if question:
 
     # st.session_state.messages.append({
     #     "role":     "bot",
-    #     "text":     answer,
+    #     "content":     answer,
     #     "category": category,
     #     "method":   method,
     # })

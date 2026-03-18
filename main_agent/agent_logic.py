@@ -6,10 +6,51 @@ from typing import Tuple
 def initialize_agent(model_name: str, skip_intro: bool = True):
     client = OpenAI()
 
-    prompt_agent(client, model_name)
+    prompt_agent_continuous(client, model_name)
     return
 
-def prompt_agent(
+def prompt_agent( #Use this function to connect w UI
+        messages: list[dict],
+        client: OpenAI = OpenAI(),
+        model_name: str = "gpt-5.4"
+) -> list[dict]:
+    #Imports
+    from objects.objects import ALL_QUERIES_REF, CURR_STYLE
+
+    #evaluating if user is asking CQ question
+    messages, cq_index = evaluate_potential_cq(messages, client, model_name)
+
+    if cq_index != -1: #-1 represents that the user did NOT ask a CQ, so if it is not -1, process as CQ
+        identified_query = ALL_QUERIES_REF[cq_index] 
+
+        #extra processing steps for raw query output
+        query_response: str = process_query_response(identified_query, messages, model_name, client)
+
+        messages.append({"role": CURR_STYLE,
+                        "content": f"""
+                            Here is the system's output for the query: 
+                            {query_response} 
+
+                            Can you please summarize the answer in some way and present it back to the user?
+                        """
+                        })
+    
+    else:
+        #Implement logic for transitioning into generative response, for now simply keep conversation going
+        messages.append({
+            "role": CURR_STYLE,
+            "content": """
+                Since no specific competency question was asked, please simply continue as normal,
+                and generate some creative response for the last user prompt
+            """
+        })
+
+    response = generate_agent_response(client, model_name, messages)
+    messages.append({"role": "assistant", "content": response})
+
+    return messages
+
+def prompt_agent_continuous(
         client: OpenAI,
         model_name: str
 ) -> None:
@@ -29,7 +70,7 @@ def prompt_agent(
         #evaluating if user is asking CQ question
         messages, cq_check = evaluate_potential_cq(messages, client, model_name)
 
-        if cq_check != 'No':
+        if cq_check != -1: #-1 represents that the user did NOT ask a CQ, so if it is not -1, process as CQ
             identified_query = ALL_QUERIES_REF[cq_check]
 
             #extra processing steps for raw query output
@@ -110,10 +151,10 @@ def generate_agent_intro(
     print(response)
     return messages
 
-def evaluate_potential_cq(messages: list[dict], client: OpenAI, model_name: str) -> Tuple[list[dict], bool]:
+def evaluate_potential_cq(messages: list[dict], client: OpenAI, model_name: str) -> Tuple[list[dict], int]:
     #Imports
     from pprint import pformat
-    from objects.objects import ALL_QUERIES_REF, CURR_STYLE
+    from objects.objects import ALL_QUERIES_REF, CURR_STYLE, INTERNAL_KEY
 
     #Decides if the user is asking a CQ question, so that a query can be ran for it.
 
@@ -142,12 +183,14 @@ def evaluate_potential_cq(messages: list[dict], client: OpenAI, model_name: str)
     #Agent answers if this is a CQ
     response = generate_agent_response(client, model_name, messages)
 
-    messages.append({"role": "assistant", "content": response})
+    messages.append({"role": "assistant",
+                     "content": f"{response} **IGNORE THIS PART OF THE MESSAGE {INTERNAL_KEY}**"
+                    })
 
-    if response != "No":
+    if response != "NO":
         return (messages, int(response))
 
-    return (messages, False)
+    return (messages, -1)
 
 def process_query_response(query: dict[str, str], messages: list, model_name: str, client: OpenAI):
     response: str = ''

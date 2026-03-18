@@ -2,6 +2,8 @@
 
 CURR_STYLE = "developer" #determines which role convention to use (developer for openai, system for groq)
 
+INTERNAL_KEY: str = "WcKRv"
+
 ALL_QUERIES_REF = [
     #Note that all queries have a 100 results limit for testing
     {
@@ -91,3 +93,44 @@ ALL_QUERIES_REF = [
         """
     }
 ]
+
+#Special Queries
+PARCEL_POLYGONS_QUERY: str = """
+    PREFIX hp:  <http://ontology.eil.utoronto.ca/HPCDM/>
+    PREFIX loc: <https://standards.iso.org/iso-iec/5087/-1/ed-1/en/ontology/SpatialLoc/>
+    PREFIX geo: <http://www.opengis.net/ont/geosparql#>
+
+    SELECT ?p ?pl
+    WHERE {
+        ?p a hp:Parcel ;
+        loc:hasLocation ?locObj .
+
+        # Ensure no building occupies this parcel #not running this for now, but check if it would help make queries faster / return the same results.
+        # FILTER NOT EXISTS {
+        #     ?b a hp:Building ;
+        #     hp:occupies ?p .
+        # }
+
+        # Polygon
+        ?locObj geo:asWKT ?pl .
+    }
+"""
+
+CIVIC_ADDRESSES_POINTS_QUERY: str = """
+    PREFIX contact: <https://standards.iso.org/iso-iec/5087/-2/ed-1/en/ontology/Contact/>
+    PREFIX loc: <https://standards.iso.org/iso-iec/5087/-1/ed-1/en/ontology/SpatialLoc/>
+    PREFIX geo: <http://www.opengis.net/ont/geosparql#>
+    PREFIX code: <https://standards.iso.org/iso-iec/5087/-2/ed-1/en/ontology/Code/>
+    PREFIX genprop: <https://standards.iso.org/iso-iec/5087/-1/ed-1/en/ontology/GenericProperties/>
+
+    SELECT ?ad ?pnt ?codeName
+    WHERE {
+        ?ad a contact:Address ;
+                loc:hasLocation ?loc ;
+                code:hasCode ?code .
+
+        ?loc geo:asWKT ?pnt .
+
+        ?code genprop:hasName ?codeName .
+    }
+"""
