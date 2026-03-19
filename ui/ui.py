@@ -179,7 +179,7 @@ if question:
 
     # Detect method for display tag
     with st.spinner("Querying GraphDB…"):
-        answer, category, st.session_state.messages = run_cq(question, index, st.session_state.messages) #now also updates all session messages
+        category, st.session_state.messages = run_cq(question, index, st.session_state.messages) #now also updates all session messages
 
     parcel_id    = _extract_parcel_id(question)
     template_key = _detect_template(question) if parcel_id else None
