@@ -111,7 +111,7 @@ SUGGESTIONS = [
     "Who owns parcel 489967?",
     "What is the perimeter of parcel 512976?",
     "Where is parcel 490700?",
-    "What is the are of parcel 394769?",
+    "What is the area of parcel 394769?",
     "What bylaws apply to parcel 389914?",
 ]
 
