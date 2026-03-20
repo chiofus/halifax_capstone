@@ -177,7 +177,7 @@ if question:
     st.session_state.messages.append({"role": "user", "content": question})
 
     # Detect method for display tag
-    with st.spinner("Generating Answer..."):
+    with st.spinner("Generating answer..."):
         category, st.session_state.messages = run_cq(question, index, st.session_state.messages) #now also updates all session messages
 
     parcel_id    = _extract_parcel_id(question)

@@ -15,17 +15,9 @@ def get_empty_civic_addresses(json_dump_location: str = '') -> list:
     import polars as pl
     from shapely.geometry import Point, Polygon
     from objects.objects import PARCEL_POLYGONS_QUERY, CIVIC_ADDRESSES_POINTS_QUERY
+    from geo_tools import into_geo_objects_list
 
     #Helper functions
-    def into_geo_objects_list(to_iterate: list[str]) -> list:
-        from shapely import wkt
-
-        #Cleaning data
-        clean_data = [wkt_literal.split("^^")[0].strip('"') for wkt_literal in to_iterate]
-
-        #Transforming and returning
-        return [wkt.loads(wkt_str) for wkt_str in clean_data]
-    
     def find_empty_addresses_strtree(
             civic_addresses_to_check: list[Point],
             polygons_to_check: list[Polygon],

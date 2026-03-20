@@ -1,5 +1,4 @@
 #General query functions
-
 def query_endpoint(
         query: str,
         repo_id: str = "HALIFAX_DT",
