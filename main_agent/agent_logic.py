@@ -56,37 +56,55 @@ def prompt_agent( #Use this function to connect w UI
     #Else, handle as general question. There are two approaches:
 
     #1. Try to find a specific parcel object and query for all its triples
-    identified_object = find_parcel_string(user_question)
+    try:
+        identified_object = find_parcel_string(user_question)
 
-    if identified_object != '-1':
-        #Generate all data triples for found object
-        all_object_triples = get_all_parcel_objects(identified_object)
+        if identified_object != '-1':
+            #Generate all data triples for found object
+            all_object_triples = get_all_parcel_objects(identified_object)
 
-        messages.append({"role": CURR_STYLE,
-                            "content": f"""
-                                Here is all the information the system has for {identified_object}: 
-                                {all_object_triples} 
+            messages.append({"role": CURR_STYLE,
+                                "content": f"""
+                                    Here is all the information the system has for {identified_object}: 
+                                    {all_object_triples} 
 
-                                Can you please use this information to answer the user's question?
-                            """
-                            })
-        
-        response = generate_agent_response(client=client, model_name = model_name, messages = messages)
-        messages.append({"role": "assistant", "content": response})
+                                    Can you please use this information to answer the user's question?
+                                """
+                                })
+            
+            response = generate_agent_response(client=client, model_name = model_name, messages = messages)
+            messages.append({"role": "assistant", "content": response})
+
+            return messages, True
 
     #2. If that fails, handle as a general query.
-    else:
+    except:
+        #Handle as general question
         messages.append({"role": CURR_STYLE,
                             "content": f"""
-                                In this case, no CQ match was found and the user is not asking about a specific property object.
+                                In this case, the query failed to execute.
 
-                                Please take the last user's input and answer it without any specific query search, as a general chatbot.
+                                Please take the last user's input and answer it without any specific query search, as a general chatbot, using any information you already have in the chat's message history.
                             """
                             })
         
         #General answer
         response = generate_agent_response(client=client, model_name = model_name, messages = messages)
         messages.append({"role": "assistant", "content": response})
+        
+        return messages, True
+
+    messages.append({"role": CURR_STYLE,
+                        "content": f"""
+                            In this case, no CQ match was found and the user is not asking about a specific property object.
+
+                            Please take the last user's input and answer it without any specific query search, as a general chatbot.
+                        """
+                        })
+    
+    #General answer
+    response = generate_agent_response(client=client, model_name = model_name, messages = messages)
+    messages.append({"role": "assistant", "content": response})
     
     return messages, True
 
