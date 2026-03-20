@@ -126,8 +126,11 @@ def evaluate_potential_cq(messages: list[dict], client: OpenAI, model_name: str)
                      "content": f"{response} **IGNORE THIS PART OF THE MESSAGE {INTERNAL_KEY}**"
                     })
 
-    if response != "NO":
-        return (messages, int(response))
+    try:
+        if "NO" in response:
+            return (messages, int(response))
+    except:
+        pass
 
     return (messages, -1)
 

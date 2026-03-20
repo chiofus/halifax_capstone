@@ -107,12 +107,12 @@ st.divider()
 
 # ── suggested questions ──────────────────────────────────────────────
 SUGGESTIONS = [
-    "What zoning applies to parcel 12345?",
-    "Who owns parcel 11111?",
-    "Is parcel 12345 serviced by water?",
-    "What is the size of parcel 12345?",
-    "Is parcel 12345 accessible by road?",
-    "What height restriction exists on parcel 12345?",
+    "Where in the city are there empty parcels of land?",
+    "Who owns parcel 489967?",
+    "What is the perimeter of parcel 512976?",
+    "Where is parcel 490700?",
+    "What is the are of parcel 394769?",
+    "What bylaws apply to parcel 389914?",
 ]
 
 if not st.session_state.messages:
