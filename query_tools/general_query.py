@@ -1,3 +1,6 @@
+#Global Imports
+from openai import OpenAI
+
 #General query functions
 def query_endpoint(
         query: str,
@@ -22,6 +25,65 @@ def query_endpoint(
  
     return results
 
+def find_parcel_string(user_input: str) -> str:
+    from objects.objects import CURR_STYLE, GETTING_PARCEL_OBJECT_INSTRUCTIONS
+    from main_agent.agent_logic import generate_agent_response
+
+    messages = []
+
+    #Appending instructions to find object
+    messages.append(
+        {
+            "role": CURR_STYLE,
+            "content": GETTING_PARCEL_OBJECT_INSTRUCTIONS
+        }
+    )
+    
+    #Appending user input
+    messages.append(
+        {
+            "role": "user",
+            "content": user_input
+        }
+    )
+
+    #Agent answers if this is a CQ
+    #note that we do not care about preserving this convo, simply want to know if we would be able to find a specific property object
+    specific_object = generate_agent_response(messages=messages)
+    
+    return specific_object
+
+def get_all_parcel_objects(specific_parcel_object: str) -> str:
+    from objects.objects import ALL_DATA_PARCELS_BUILDINGS, ALL_DATA_GENERAL
+    from pprint import pformat
+    from query_tools.object_finders import find_parcel_covers
+    from copy import deepcopy
+
+    #The answer consists of multiple parts:
+    response = ''
+
+    #1. Getting parcel info
+    #Now, run query with custom property id to get all parcel related info
+    response += pformat(query_endpoint(ALL_DATA_PARCELS_BUILDINGS.replace("CUSTOM_PROPERTY_OBJ", specific_parcel_object))["results"]["bindings"])
+
+    #2. Getting all zoning objects (bylaw, zoning) that have info on parcel
+    for zoning_object in find_parcel_covers(specific_parcel_object, "hp:ZoningType"):
+        partial = query_endpoint(ALL_DATA_GENERAL.replace("CUSTOM_PROPERTY_OBJ", zoning_object))["results"]["bindings"]
+        to_add = deepcopy(partial)
+
+        #Remove polys
+        for idx, entry in enumerate(partial):
+            for object in entry.values():
+                try:
+                    if "POLYGON" in object['value']: 
+                        del to_add[idx]
+                except:
+                    pass
+
+        response += f"\n\n{pformat(to_add)}"
+
+    return response #return clean response
+
 def convert_default_sparql_to_df(results: dict):
     #Given the default sparql fetch results, cleans them into a dataframe
 
@@ -30,6 +92,10 @@ def convert_default_sparql_to_df(results: dict):
 
     #Helper fns
     def cast_value(value_dict: dict):
+        #Imports
+        from datetime import date, datetime
+
+
         #Datatypes
         XSD_INT = {
             "http://www.w3.org/2001/XMLSchema#integer",

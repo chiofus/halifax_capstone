@@ -15,7 +15,7 @@ def get_empty_civic_addresses(json_dump_location: str = '') -> list:
     import polars as pl
     from shapely.geometry import Point, Polygon
     from objects.objects import PARCEL_POLYGONS_QUERY, CIVIC_ADDRESSES_POINTS_QUERY
-    from geo_tools import into_geo_objects_list
+    from visualizer.geo_tools import into_geo_objects_list
 
     #Helper functions
     def find_empty_addresses_strtree(
@@ -95,87 +95,6 @@ def get_empty_civic_addresses(json_dump_location: str = '') -> list:
     empty_civic_addresses = find_empty_addresses_strtree(civic_addresses_to_check, polygons_to_check, json_dump_location)
 
     return empty_civic_addresses
-
-def map_geometries(polygons: dict, rows: list[dict], filename: str, save_to: str = """visualizer/visualized""", pl_obj_name: str = 'pl') -> str: #returns loc where map was saved
-    #Note that this fn expects a clean polygons dict, already referenced to the polygon obj itself.
-    
-    #creating save location
-    os.makedirs(save_to, exist_ok=True)
-
-    # geoms = [wkt.loads(str(r[f"{pl_obj_name}"])) for r in polygons]
-    geoms = []
-
-    #cleaning polygon objects
-    for r in polygons:
-        geoms.append(wkt.loads(r['value'].split("^^")[0].strip('"')))
-
-    gdf = gpd.GeoDataFrame(data=rows, geometry=geoms, crs="EPSG:4326")
-
-    # Create map
-    m = folium.Map(location=[44.70, -63.60], zoom_start=11)
-
-    #popups for parcels
-    headers = [k for k in rows[0]] #extracting headers directly from data
-    popup_settings = folium.GeoJsonPopup(
-        fields=headers,
-        aliases=headers,
-        localize=True,
-        labels=True
-    )
-
-    folium.GeoJson(
-        gdf,
-        style_function=lambda x: {
-            "fillColor": "blue",
-            "color": "black",
-            "weight": 1,
-            "fillOpacity": 0.5
-        },
-        popup=popup_settings
-    ).add_to(m)
-
-    # Save map
-    saved_to: str = f"{save_to}/{filename}.html"
-    m.save(saved_to)
-
-    return saved_to
-
-    # /** This will only be used when we do the use zone implementation
-
-    # zones = []
-    # types = []
-
-    # for r in polygons:
-    #     # zones.append(str(r.zone))
-    #     # types.append(str(r.type))
-    #     geoms.append(wkt.loads(str(r.polygon)))
-
-    # Create dataframe
-    # df = pd.DataFrame({
-    #     "zone": zones,
-    #     "type": types
-    # })
-
-    # gdf = gpd.GeoDataFrame(df, geometry=geoms, crs="EPSG:4326")
-
-    # Color map for zone types
-    # color_map = {
-    #     "Urban Reserve": "blue",
-    #     "Community Facility": "green",
-    #     "Provincial Park": "darkgreen",
-    #     "Local Business": "orange"
-    # }
-
-    # folium.GeoJson(
-    #     gdf,
-    #     style_function=style_function,
-    #     tooltip=folium.GeoJsonTooltip(
-    #         fields=["zone", "type"],
-    #         aliases=["Zone:", "Type:"]
-    #     )
-    # ).add_to(m)
-
-    # **\
 
 def map_empty_civ_addresses() -> int: #returns number of empty addresses mapped
     import plotly.express as px

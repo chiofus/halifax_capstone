@@ -782,7 +782,7 @@ def run_cq(question: str, index: HPCDMIndex, messages: list[dict]) -> tuple[str,
     from main_agent.agent_logic import prompt_agent
 
     #Before attempting templated approach, try to get CQ detection
-    messages, cq_answered = prompt_agent(messages)
+    messages, cq_answered = prompt_agent(messages, user_question=question)
 
     if cq_answered: return category, messages #if cq answered, skips rest of code
 

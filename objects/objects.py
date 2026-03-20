@@ -268,29 +268,29 @@ ALL_QUERIES_REF = [
         """
     },
 
-    {
-        'id': 'cq_2',
-        'original': 'Who owns parcel x?',
-        'query': ALL_DATA_PARCELS_BUILDINGS
-    },
+    # {
+    #     'id': 'cq_2',
+    #     'original': 'Who owns parcel x?',
+    #     'query': ALL_DATA_PARCELS_BUILDINGS
+    # },
 
-    {
-        'id': 'cq_1a',
-        'original': 'What is the size of parcel x?',
-        'query': ALL_DATA_PARCELS_BUILDINGS
-    },
+    # {
+    #     'id': 'cq_1a',
+    #     'original': 'What is the size of parcel x?',
+    #     'query': ALL_DATA_PARCELS_BUILDINGS
+    # },
 
-    {
-        'id': 'cq_1b',
-        'original': 'What is the perimeter of parcel x?',
-        'query': ALL_DATA_PARCELS_BUILDINGS
-    },
+    # {
+    #     'id': 'cq_1b',
+    #     'original': 'What is the perimeter of parcel x?',
+    #     'query': ALL_DATA_PARCELS_BUILDINGS
+    # },
 
-    {
-        'id': 'cq_3',
-        'original': 'What use is parcel x zoned for?',
-        'query': ALL_DATA_PARCELS_BUILDINGS #only gets parcel data, further processing for zoning data later in code
-    }
+    # {
+    #     'id': 'cq_3',
+    #     'original': 'What use is parcel x zoned for?',
+    #     'query': ALL_DATA_PARCELS_BUILDINGS #only gets parcel data, further processing for zoning data later in code
+    # }
 ]
 
 #Individual object retrievals
@@ -319,7 +319,7 @@ GET_POLYGON_PARCEL = """
 #Instructions
 
 GETTING_PARCEL_OBJECT_INSTRUCTIONS: str = """
-Since the user is (or should be) asking about a SPECIFIC property object, please look for this property object number in their input.
+We would like it know if the user is asking about a SPECIFIC property object, please look for this property object number in their input.
 
 If their input looks something like this: 'Who owns parcel 426324?', then we know they are looking for object '426324'.
 

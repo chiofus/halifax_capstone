@@ -6,13 +6,15 @@ from typing import Tuple
 def prompt_agent( #Use this function to connect w UI
         messages: list[dict],
         client: OpenAI = OpenAI(),
-        model_name: str = "gpt-5.4"
+        model_name: str = "gpt-5.4",
+        user_question: str = ''
 ) -> tuple[list[dict], bool]: #returns chain of messages and if it was able to get a valid CQ match or not (False for no match)
     #Imports
-    from objects.objects import ALL_QUERIES_REF, CURR_STYLE, GETTING_PARCEL_OBJECT_INSTRUCTIONS, INTERNAL_KEY
+    from objects.objects import ALL_QUERIES_REF, CURR_STYLE
+    from query_tools.general_query import find_parcel_string, get_all_parcel_objects
 
     #evaluating if user is asking CQ question
-    messages, cq_index = evaluate_potential_cq(messages, client, model_name)
+    messages, cq_index = evaluate_potential_cq(messages=messages,client=client, model_name=model_name)
 
     if cq_index != -1: #-1 represents that the user did NOT ask a CQ, so if it is not -1, process as CQ
         try:
@@ -31,7 +33,7 @@ def prompt_agent( #Use this function to connect w UI
                             })
             
             #Answering CQ
-            response = generate_agent_response(client, model_name, messages)
+            response = generate_agent_response(client=client, model_name = model_name, messages = messages)
             messages.append({"role": "assistant", "content": response})
 
             return messages, True
@@ -46,23 +48,45 @@ def prompt_agent( #Use this function to connect w UI
                                 })
             
             #General answer
-            response = generate_agent_response(client, model_name, messages)
+            response = generate_agent_response(client=client, model_name = model_name, messages = messages)
             messages.append({"role": "assistant", "content": response})
             
             return messages, True
-    
-    #Else, handle as general question
-    messages.append({"role": CURR_STYLE,
-                        "content": f"""
-                            In this case, no CQ match was found.
 
-                            Please take the last user's input and answer it without any specific query search, as a general chatbot.
-                        """
-                        })
-    
-    #General answer
-    response = generate_agent_response(client, model_name, messages)
-    messages.append({"role": "assistant", "content": response})
+    #Else, handle as general question. There are two approaches:
+
+    #1. Try to find a specific parcel object and query for all its triples
+    identified_object = find_parcel_string(user_question)
+
+    if identified_object != '-1':
+        #Generate all data triples for found object
+        all_object_triples = get_all_parcel_objects(identified_object)
+
+        messages.append({"role": CURR_STYLE,
+                            "content": f"""
+                                Here is all the information the system has for {identified_object}: 
+                                {all_object_triples} 
+
+                                Can you please use this information to answer the user's question?
+                            """
+                            })
+        
+        response = generate_agent_response(client=client, model_name = model_name, messages = messages)
+        messages.append({"role": "assistant", "content": response})
+
+    #2. If that fails, handle as a general query.
+    else:
+        messages.append({"role": CURR_STYLE,
+                            "content": f"""
+                                In this case, no CQ match was found and the user is not asking about a specific property object.
+
+                                Please take the last user's input and answer it without any specific query search, as a general chatbot.
+                            """
+                            })
+        
+        #General answer
+        response = generate_agent_response(client=client, model_name = model_name, messages = messages)
+        messages.append({"role": "assistant", "content": response})
     
     return messages, True
 
@@ -96,7 +120,7 @@ def evaluate_potential_cq(messages: list[dict], client: OpenAI, model_name: str)
     )
 
     #Agent answers if this is a CQ
-    response = generate_agent_response(client, model_name, messages)
+    response = generate_agent_response(client=client, model_name = model_name, messages = messages)
 
     messages.append({"role": "assistant",
                      "content": f"{response} **IGNORE THIS PART OF THE MESSAGE {INTERNAL_KEY}**"
@@ -148,7 +172,7 @@ def process_query_response(query: dict[str, str], messages: list, model_name: st
         )
 
         #Agent answers if this is a CQ
-        agents_response = generate_agent_response(client, model_name, messages)
+        agents_response = generate_agent_response(client=client, model_name = model_name, messages = messages)
         messages.append(
             {"role": "assistant", 
              "content": f"{agents_response} **IGNORE THIS PART OF THE MESSAGE {INTERNAL_KEY}**"})
@@ -168,7 +192,7 @@ def process_query_response(query: dict[str, str], messages: list, model_name: st
         #The answer consists of multiple parts:
 
         #1. Getting parcel info
-        specific_parcel_object = generate_agent_response(client, model_name, messages)
+        specific_parcel_object = generate_agent_response(client=client, model_name = model_name, messages = messages)
         messages.append(
             {"role": "assistant", 
              "content": f"{specific_parcel_object} **IGNORE THIS PART OF THE MESSAGE {INTERNAL_KEY}**"})
@@ -194,7 +218,7 @@ def process_query_response(query: dict[str, str], messages: list, model_name: st
 
     return response #return clean response
 
-def generate_agent_response(client: OpenAI, model_name: str, messages: dict, temp: float = 0.1) -> str: #simply returns agent's text output
+def generate_agent_response(messages: dict, client: OpenAI = OpenAI() , model_name: str = "gpt-5.4", temp: float = 0.1) -> str: #simply returns agent's text output
     response: str = ''
 
     completion = client.responses.create( #template for openai agent
