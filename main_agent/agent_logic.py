@@ -127,8 +127,7 @@ def evaluate_potential_cq(messages: list[dict], client: OpenAI, model_name: str)
                     })
 
     try:
-        if "NO" in response:
-            return (messages, int(response))
+        return (messages, int(response))
     except:
         pass
 
