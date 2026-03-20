@@ -31,7 +31,7 @@ def prompt_agent( #Use this function to connect w UI
                             Here is the system's output for the query: 
                             {query_response} 
 
-                            Can you please summarize the answer in some way and present it back to the user?
+                            Can you please use this information to answer the user's question?
                         """
                         })
         
@@ -41,7 +41,20 @@ def prompt_agent( #Use this function to connect w UI
 
         return messages, True
     
-    return messages, False
+    #Else, handle as general question
+    messages.append({"role": CURR_STYLE,
+                        "content": f"""
+                            In this case, no CQ match was found.
+
+                            Please take the last user's input and answer it without any specific query search, as a general chatbot.
+                        """
+                        })
+    
+    #General answer
+    response = generate_agent_response(client, model_name, messages)
+    messages.append({"role": "assistant", "content": response})
+    
+    return messages, True
 
 def prompt_agent_continuous(
         client: OpenAI,

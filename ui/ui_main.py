@@ -14,7 +14,8 @@ from langchain_community.chains.graph_qa.ontotext_graphdb import OntotextGraphDB
 
 load_dotenv()
 
-GRAPHDB_QUERY_ENDPOINT = "http://localhost:7200/repositories/zoning"
+REPO_ID = "HALIFAX_DT"
+GRAPHDB_QUERY_ENDPOINT = "http://localhost:7200/repositories/"+REPO_ID
 HPCDM_FILE = "HPCDM_with_instances.ttl"
 
 HP = Namespace("http://ontology.eil.utoronto.ca/HPCDM/")
@@ -734,10 +735,8 @@ def extract_schema(index: HPCDMIndex, question: str) -> str:
 # LLM CHAIN FALLBACK
 # =====================================================================
 
-def _run_llm_chain(question: str, index: HPCDMIndex, messages: list[dir]) -> tuple[str, list[dict]]:
-    #Will first try for hardcoded CQ lookup
-    from main_agent.agent_logic import prompt_agent
-    messages, answered_cq = prompt_agent(messages) #tries to obtain hardcoded cq response
+def _run_llm_chain(question: str, index: HPCDMIndex, messages: list[dir]) -> list[dict]:
+    #Will try for raw query generation
 
     schema_path = extract_schema(index, question)
     try:
@@ -754,7 +753,12 @@ def _run_llm_chain(question: str, index: HPCDMIndex, messages: list[dir]) -> tup
         #Adding to messages
         answer = chain.invoke(question)["result"]
 
-        return , messages
+        messages.append({
+            "role":     "assistant",
+            "content":     answer
+        })
+
+        return messages
     finally:
         try:
             os.unlink(schema_path)
@@ -773,6 +777,14 @@ def run_cq(question: str, index: HPCDMIndex, messages: list[dict]) -> tuple[str,
 
     # Templates that always use HALIFAX_TEMPLATES regardless of ID length
     BL_TEMPLATES = {"building_use_by_bl", "ownership_by_bl", "year_built_by_bl", "symbol_use_by_bl", "bylaw_area", "zoning", "address_by_pid"}
+
+    #Imports
+    from main_agent.agent_logic import prompt_agent
+
+    #Before attempting templated approach, try to get CQ detection
+    messages, cq_answered = prompt_agent(messages)
+
+    if cq_answered: return category, messages #if cq answered, skips rest of code
 
     if template_key and parcel_id:
         is_real = _is_real_halifax_id(parcel_id)
@@ -796,7 +808,7 @@ def run_cq(question: str, index: HPCDMIndex, messages: list[dict]) -> tuple[str,
             src = "BL" if is_bl_query else ("real Halifax" if is_real else "synthetic")
             print(f"  [direct SPARQL: {template_key} | {src} data]")
 
-            #Updates messages chain
+            #Updates messages chain if template answered
             messages.append({
                 "role":     "assistant",
                 "content":     answer

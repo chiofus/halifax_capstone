@@ -17,7 +17,6 @@ add_venv_dir_to_modules() #adds venv dir to modules
 
 #IMPORTS
 import streamlit as st
-from main_agent.agent_logic import prompt_agent
 from objects.objects import INTERNAL_KEY
 from ui_main import run_cq, HPCDMIndex, HPCDM_FILE
 from ui_main import _extract_parcel_id, _detect_template, _run_direct_sparql, _format_answer, _infer_category, extract_keywords
@@ -178,7 +177,7 @@ if question:
     st.session_state.messages.append({"role": "user", "content": question})
 
     # Detect method for display tag
-    with st.spinner("Querying GraphDB…"):
+    with st.spinner("Generating Answer..."):
         category, st.session_state.messages = run_cq(question, index, st.session_state.messages) #now also updates all session messages
 
     parcel_id    = _extract_parcel_id(question)

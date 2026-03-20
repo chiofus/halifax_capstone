@@ -10,3 +10,4 @@
 *html*
 /triples/
 !/sample_triples/**
+!HPCDM_with_instances.ttl
